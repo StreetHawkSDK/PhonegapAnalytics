@@ -155,7 +155,15 @@ public class Streethawk extends CordovaPlugin implements ISHEventObserver{
         if(action.equals("setInteractivePushBtnPair")){
 			return setInteractivePushBtnPair();
 		}
-        
+
+		//Added in 1.8.7
+		 if(action.equals("setLargeIconResID")){
+			return setLargeIconResID(args);
+		}
+		 if(action.equals("setSmallIconResID")){
+			return setSmallIconResID(args);
+		}
+
 		/*GROWTH plugin*/
 		if(action.equals("getShareUrlForAppDownload")){
 			return originateShareWithCampaign(args,callbackContext);
@@ -1088,6 +1096,88 @@ public class Streethawk extends CordovaPlugin implements ISHEventObserver{
 		}
 		return true;
 	}
+	
+	    /**
+         * Function sets bigIcon to be used in notification bar
+         */
+        private boolean setLargeIconResID(JSONArray args){
+		final Context context = cordova.getActivity().getApplicationContext();
+        String iconName;
+        try{
+            iconName= args.getString(0);
+        }catch(JSONException e){
+           iconName=null; 
+        }
+        if(null==iconName)
+            return false;	
+		Class noParams[] = {};
+		Class[] paramContext = new Class[1];
+		paramContext[0] = Context.class;
+
+        Class[] name = new Class[1];
+		name[0] = String.class; 
+		Class push = null;
+		try {
+			push = Class.forName("com.streethawk.library.push.Push");
+			Method pushMethod = push.getMethod("getInstance", paramContext);
+			Object obj = pushMethod.invoke(null,context);
+			if (null != obj) {
+				Method addPushModule = push.getDeclaredMethod("setLargeIconResID",name);
+				addPushModule.invoke(obj,iconName);
+			}
+		} catch (ClassNotFoundException e1) {
+			Log.w(TAG,SUBTAG+"No Push module found. Add streethawk push plugin");
+		} catch (IllegalAccessException e1) {
+			e1.printStackTrace();
+		} catch (NoSuchMethodException e1) {
+			e1.printStackTrace();
+		} catch (InvocationTargetException e1) {
+			e1.printStackTrace();
+		}
+		return true;
+	}
+
+	    /**
+         * Function returns icon resid of given icon name
+         */
+        private boolean setSmallIconResID(JSONArray args){
+		Log.e("Anurag","inside setSmallIconResID");
+		final Context context = cordova.getActivity().getApplicationContext();
+        String iconName;
+        try{
+            iconName= args.getString(0);
+			Log.e("Anurag","Small Iconname "+iconName);
+        }catch(JSONException e){
+           iconName=null; 
+        }
+        if(null==iconName)
+            return false;	
+		Class noParams[] = {};
+		Class[] paramContext = new Class[1];
+		paramContext[0] = Context.class;
+        Class[] name = new Class[1];
+		name[0] = String.class; 
+		Class push = null;
+		try {
+			push = Class.forName("com.streethawk.library.push.Push");
+			Method pushMethod = push.getMethod("getInstance", paramContext);
+			Object obj = pushMethod.invoke(null,context);
+			if (null != obj) {
+				Method addPushModule = push.getDeclaredMethod("setSmallIconResID",name);
+				addPushModule.invoke(obj,iconName);
+			}
+		} catch (ClassNotFoundException e1) {
+			Log.w(TAG,SUBTAG+"No Push module found. Add streethawk push plugin");
+		} catch (IllegalAccessException e1) {
+			e1.printStackTrace();
+		} catch (NoSuchMethodException e1) {
+			e1.printStackTrace();
+		} catch (InvocationTargetException e1) {
+			e1.printStackTrace();
+		}
+		return true;
+	}
+
         
 	/*GROWTH API*/
 	private boolean originateShareWithCampaign(JSONArray args, CallbackContext callbackContext)throws JSONException{

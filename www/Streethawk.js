@@ -156,8 +156,11 @@ SHLibrary.prototype.addInteractivePushButtonPairWithIcons = function(string_b1,s
 SHLibrary.prototype.addInteractivePushButtonPair = function(string_b1,string_b2,string_pairname,appSuccess, appFail) {
     exec(appSuccess, appFail, 'Streethawk', 'addInteractivePushButtonPair', [string_b1,string_b2,string_pairname]);
 }
-SHLibrary.prototype.setInteractivePushBtnPair = function(appSuccess, appFail) {
-    exec(appSuccess, appFail, 'Streethawk', 'setInteractivePushBtnPair',[]);
+SHLibrary.prototype.setLargeIconResID = function(string_name,appSuccess, appFail) {
+    exec(appSuccess, appFail, 'Streethawk', 'setLargeIconResID',[string_name]);
+}
+SHLibrary.prototype.setSmallIconResID = function(string_name,appSuccess, appFail) {
+    exec(appSuccess, appFail, 'Streethawk', 'setSmallIconResID',[string_name]);
 }
 
 // Growth plugin
