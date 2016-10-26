@@ -356,6 +356,16 @@
 - (void)getIcon:(CDVInvokedUrlCommand *)command;
 
 /**
+ * Android function, ignored in ios.
+ */
+- (void)setLargeIconResID:(CDVInvokedUrlCommand *)command;
+
+/**
+ * Android function, ignored in ios.
+ */
+- (void)setSmallIconResID:(CDVInvokedUrlCommand *)command;
+
+/**
  * Android permission function, ignored in ios.
  */
 - (void)shStartLocationReporting:(CDVInvokedUrlCommand *)command;
