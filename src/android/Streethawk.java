@@ -31,6 +31,8 @@ public class Streethawk extends CordovaPlugin implements ISHEventObserver{
     private final 	String INSTALLID = "installid";
 	private final 	String FEED_DATA = "feed_data";
     private static 	CallbackContext mEventObserverCallback;
+	private static CallbackContext mDeepLinkCallback;
+
 	@Override
 	public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
 		if(action.equals("streethawkinit")) {            	
@@ -79,6 +81,7 @@ public class Streethawk extends CordovaPlugin implements ISHEventObserver{
 			return shGetAppKey(callbackContext);
 		}
 		if(action.equals("shDeeplinking")){
+			mDeepLinkCallback = callbackContext; 
 			return processDeeplinkRequest(callbackContext);
 		}
 		if(action.equals("shSendSimpleFeedback")){
@@ -105,7 +108,6 @@ public class Streethawk extends CordovaPlugin implements ISHEventObserver{
 		/*PUSH Plugin*/
 		if(action.equals("shSetGcmSenderId")){
 			mSenderID = args.getString(0);
-			Log.e("Anurag","SenderID "+mSenderID+args.getString(0));
             registerISHObserver();
 			return true;
 		}
@@ -420,15 +422,40 @@ public class Streethawk extends CordovaPlugin implements ISHEventObserver{
 		callbackContext.success(result);
 		return true;
 	}
+
+	@Override
+ 	public void onResume(boolean multitasking) {
+		 super.onResume(multitasking);
+	}
+
+	@Override
+ 	public void onNewIntent(Intent intent) {
+		 super.onNewIntent(intent);
+		 if(null==mDeepLinkCallback){
+			return;
+		}else{
+			if(null!=intent){
+				String url =intent.getDataString();
+				PluginResult result = new PluginResult(PluginResult.Status.OK, url);
+				result.setKeepCallback(true);
+				mDeepLinkCallback.sendPluginResult(result);			   
+        	}
+		}
+	}
+
 	private boolean processDeeplinkRequest(CallbackContext callbackContext){
-        if(null==callbackContext)
+		if(null==callbackContext){
 			return false;
+		}
 		final Intent intent = ((CordovaActivity) this.webView.getContext()).getIntent();
 		String url = null;
 		if(null!=intent){
 			url =intent.getDataString();       
         }
         if(null==url){
+			PluginResult result = new  PluginResult(PluginResult.Status.NO_RESULT); 
+    		result.setKeepCallback(true); 
+    		mDeepLinkCallback.sendPluginResult(result);	
             // Send pointzi install url
             final Context context = cordova.getActivity().getApplicationContext();
             Class noParams[] = {};
@@ -466,8 +493,10 @@ public class Streethawk extends CordovaPlugin implements ISHEventObserver{
             }
             return true;   
         }else{
-            callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, url));
-        }
+				PluginResult result = new PluginResult(PluginResult.Status.OK, url);
+				result.setKeepCallback(true);
+				mDeepLinkCallback.sendPluginResult(result);	
+		}
 		return true;
 	}
 	private boolean shSendSimpleFeedback(JSONArray args)throws JSONException{
@@ -1141,12 +1170,10 @@ public class Streethawk extends CordovaPlugin implements ISHEventObserver{
          * Function returns icon resid of given icon name
          */
         private boolean setSmallIconResID(JSONArray args){
-		Log.e("Anurag","inside setSmallIconResID");
 		final Context context = cordova.getActivity().getApplicationContext();
         String iconName;
         try{
             iconName= args.getString(0);
-			Log.e("Anurag","Small Iconname "+iconName);
         }catch(JSONException e){
            iconName=null; 
         }
