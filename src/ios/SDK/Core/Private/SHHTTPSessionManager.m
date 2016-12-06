@@ -46,8 +46,6 @@
           sharedHTTPSessionManager.completionQueue = dispatch_queue_create("com.streethawk.StreetHawk.network", NULL/*NULL attribute same as DISPATCH_QUEUE_SERIAL, means this queue is FIFO.*/); //set completionQueue otherwise completion callback runs in main thread.
       });
     //By default it uses HTTP request and JSON response serializer.
-    //Temp solution: some APIs are moving to /v2 and must use JSON request, but some old APIs are still using HTTP request. Currently still use HTTP and if special one needs to use JSON request, the one needs to set before call.
-    sharedHTTPSessionManager.requestSerializer = [SHAFHTTPRequestSerializer serializer]; //reset to HTTP. Later it should all use JSON.
     return sharedHTTPSessionManager;
 }
 
@@ -148,7 +146,8 @@
 - (void)processSuccessCallback:(NSURLSessionDataTask *)task withData:(id)responseObject success:(void (^)(NSURLSessionDataTask * _Nullable, id _Nullable))success failure:(void (^)(NSURLSessionDataTask * _Nullable, NSError * _Nullable))failure
 {
     NSAssert(![NSThread isMainThread], @"Successfual callback wait in main thread for request %@.", task.currentRequest);
-    if ([task.response.URL.absoluteString.lowercaseString hasPrefix:@"https://api.streethawk.com"] || [task.response.URL.absoluteString.lowercaseString hasPrefix:@"https://hawk0.streethawk.com"] || [task.response.URL.absoluteString.lowercaseString hasPrefix:@"https://hawk.streethawk.com"] || [task.response.URL.absoluteString.lowercaseString hasPrefix:@"https://staging.streethawk.com"])
+    if ([task.response.URL.absoluteString.lowercaseString containsString:@".streethawk.com"] //since route host server is flexible to change
+        && ![task.response.URL.absoluteString.lowercaseString hasPrefix:NONULL([SHAppStatus sharedInstance].growthHost)]) //growth is an exception
     {
         //whenever success process a request, do parser as it affects AppStatus.
         int resultCode = CODE_OK;
@@ -197,6 +196,11 @@
                     if ([dictStatus.allKeys containsObject:@"host"] && [dictStatus[@"host"] isKindOfClass:[NSString class]])
                     {
                         [SHAppStatus sharedInstance].aliveHost = dictStatus[@"host"];
+                    }
+                    //check "growth_host"
+                    if ([dictStatus.allKeys containsObject:@"growth_host"] && [dictStatus[@"growth_host"] isKindOfClass:[NSString class]])
+                    {
+                        [SHAppStatus sharedInstance].growthHost = dictStatus[@"growth_host"];
                     }
                     //check "location_updates"
                     if ([dictStatus.allKeys containsObject:@"location_updates"] && [dictStatus[@"location_updates"] respondsToSelector:@selector(boolValue)])
@@ -322,6 +326,24 @@
         }
         SHLog(@"Add breakpoint here to know error request happen for %@.", comment);
     }
+}
+
+@end
+
+@implementation SHJSONSessionManager
+
++ (SHJSONSessionManager *)sharedInstance
+{
+    static SHJSONSessionManager *sharedJSONSessionManager = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^
+      {
+          sharedJSONSessionManager = [[SHJSONSessionManager alloc] initWithSessionConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
+          sharedJSONSessionManager.completionQueue = dispatch_queue_create("com.streethawk.StreetHawk.network", NULL/*NULL attribute same as DISPATCH_QUEUE_SERIAL, means this queue is FIFO.*/); //set completionQueue otherwise completion callback runs in main thread.
+          //some APIs are moving to /v2 and must use JSON request, but some old APIs are still using HTTP request. Cannot switch requestSerializer otherwise cause random crash (https://streethawk.atlassian.net/browse/IOS-958). Keep individual singleton for each. Later when all server API moves to JSON, SHAFHTTPRequestSerializer can be removed.
+          sharedJSONSessionManager.requestSerializer = [SHAFJSONRequestSerializer serializer];
+      });
+    return sharedJSONSessionManager;
 }
 
 @end

@@ -98,11 +98,6 @@ typedef void (^SHOpenUrlHandler)(NSURL *openUrl);
 @property (nonatomic, strong) NSString *appKey;
 
 /**
- Only for internal usage. It's "https://api.streethawk.com".
- */
-- (void)setDefaultStartingUrl:(NSString *)defaultUrl;
-
-/**
  Decide whether need to show debug log in console.
  */
 @property (nonatomic) BOOL isDebugMode;
@@ -173,12 +168,12 @@ The application version and build version of current Application, formatted as @
  
  - (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo
  {
-    [StreetHawk handleRemoteNotification:userInfo];
+    [StreetHawk handleRemoteNotification:userInfo treatAppAs:SHAppFGBG_Unknown needComplete:YES fetchCompletionHandler:nil];
  }
  
  - (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
  {
-    [StreetHawk handleRemoteNotification:userInfo needComplete:YES fetchCompletionHandler:completionHandler];
+    [StreetHawk handleRemoteNotification:userInfo treatAppAs:SHAppFGBG_Unknown needComplete:YES fetchCompletionHandler:completionHandler];
  }
  
  - (void)application:(UIApplication *)application handleActionWithIdentifier:(NSString *)identifier forRemoteNotification:(NSDictionary *)userInfo completionHandler:(void (^)())completionHandler
@@ -188,7 +183,7 @@ The application version and build version of current Application, formatted as @
 
  - (void)application:(UIApplication *)application didReceiveLocalNotification:(UILocalNotification *)notification
  {
-    [StreetHawk handleLocalNotification:notification];
+    [StreetHawk handleLocalNotification:notification treatAppAs:SHAppFGBG_Unknown needComplete:YES fetchCompletionHandler:nil];
  }
  
  - (void)application:(UIApplication *)application handleActionWithIdentifier:(NSString *)identifier forLocalNotification:(UILocalNotification *)notification completionHandler:(void (^)())completionHandler
@@ -198,7 +193,7 @@ The application version and build version of current Application, formatted as @
 
  - (void)application:(UIApplication *)application performFetchWithCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
  {
-    [StreetHawk shRegularTask:completionHandler];
+    [StreetHawk shRegularTask:completionHandler needComplete:YES];
  }
  
  - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation
@@ -505,7 +500,7 @@ The application version and build version of current Application, formatted as @
 
 /**
  Update the current install or create a new one if one does not exist.
- @param save_handler Callback for result.
+ @param handler Callback for result.
  */
 - (void)registerOrUpdateInstallWithHandler:(SHCallbackHandler)handler;
 
