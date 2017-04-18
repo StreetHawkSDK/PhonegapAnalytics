@@ -1,0 +1,20 @@
+{
+  "name": "streethawkanalytics",
+  "version": "1.8.4",
+  "description": "The repository hosts Phonegap plugin of StreetHawk SDK's Analytics module. The plugin  reports various vital raw data to StreetHawk servers which is further processed and used for various analytic for your application. The module also provides API for tagging the install, identifying the users and tracking various important events inside your application.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/StreetHawkSDK/PhonegapAnalytics.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/StreetHawkSDK/PhonegapAnalytics/issues"
+  },
+  "homepage": "https://github.com/StreetHawkSDK/PhonegapAnalytics#readme"
+}
