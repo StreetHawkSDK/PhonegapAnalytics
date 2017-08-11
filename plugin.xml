@@ -22,7 +22,7 @@
 			</feature>
 		</config-file>
         
-		<framework src="com.streethawk.phonegap:core:1.8.5" />
+		<framework src="src/android/build.gradle" custom="true" type="gradleReference" />
 		<config-file target="AndroidManifest.xml" parent="/*/application/activity">
       <intent-filter>
         <data android:scheme="$URL_SCHEME"/>
@@ -31,10 +31,7 @@
         <category android:name="android.intent.category.BROWSABLE" />
       </intent-filter>
     </config-file>
-		
 		<config-file parent="/manifest" target="AndroidManifest.xml">
-		   
-		
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.GET_TASKS" />
