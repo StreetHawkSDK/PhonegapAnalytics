@@ -1,12 +1,10 @@
-buildscript {
-    repositories {
-        jcenter()
+repositories {
         maven { url "http://pkg.streethawk.com/artifactory/streethawk" }
     }
-    dependencies {
+dependencies {
        compile 'com.streethawk:core:latest.release'
-    }
 }
+
 
 
 
