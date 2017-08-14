@@ -22,7 +22,7 @@
 			</feature>
 		</config-file>
         
-		<framework src="src/android/build.gradle" custom="true" type="gradleReference" />
+		<framework src="src/android/core.gradle" custom="true" type="gradleReference" />
 		<config-file target="AndroidManifest.xml" parent="/*/application/activity">
       <intent-filter>
         <data android:scheme="$URL_SCHEME"/>
