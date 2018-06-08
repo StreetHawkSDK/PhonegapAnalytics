@@ -25,6 +25,7 @@
 #import "SHDeepLinking.h"
 #import "SHFriendlyNameObject.h"
 #import "SHUtils.h"
+#import "SHHTTPSessionManager.h" //for set header "X-Installid"
 //header from System
 #import <CoreSpotlight/CoreSpotlight.h> //for spotlight search
 #import <MobileCoreServices/MobileCoreServices.h> //for kUTTypeImage
@@ -33,7 +34,6 @@
 
 #define APPKEY_KEY                          @"APPKEY_KEY" //key for store "app key", next time if try to read appKey before register, read from this one.
 #define INSTALL_SUID_KEY                    @"INSTALL_SUID_KEY"
-
 #define ENTER_PAGE_HISTORY                  @"ENTER_PAGE_HISTORY"  //key for record entered page history. It's set when enter a page and cleared when send exit log except go BG.
 #define ENTERBAK_PAGE_HISTORY               @"ENTERBAK_PAGE_HISTORY" //key for record entered page history as backup. It's set as backup in case ENTER_PAGE_HISTORY not set in canceled pop up.
 #define EXIT_PAGE_HISTORY                   @"EXIT_PAGE_HISTORY"  //key for record send exit log history. It's set when send exit log and cleared when send enter log. This is to avoid send duplicated exit log.
@@ -69,8 +69,8 @@
 {
     NSMutableDictionary *dict = [NSMutableDictionary dictionary];
     [dict setObject:self.viewName forKey:@"page"];
-    [dict setObject:shFormatStreetHawkDate(self.enterTime) forKey:@"enter"];
-    [dict setObject:shFormatStreetHawkDate(self.exitTime) forKey:@"exit"];
+    [dict setObject:shFormatISODate(self.enterTime) forKey:@"enter"];
+    [dict setObject:shFormatISODate(self.exitTime) forKey:@"exit"];
     [dict setObject:@(self.duration) forKey:@"duration"];
     [dict setObject:@(self.enterBg) forKey:@"bg"];
     return NONULL(shSerializeObjToJson(dict));
@@ -157,7 +157,7 @@
     });
 }
 
-+ (SHApp *)sharedInstance
++ (nonnull SHApp *)sharedInstance
 {
     static SHApp *instance = nil;
     static dispatch_once_t onceToken;
@@ -217,6 +217,12 @@
         {
             [[NSNotificationCenter defaultCenter] addObserver:crashBridge selector:@selector(bridgeHandler:) name:SH_InitBridge_Notification object:nil];
         }
+        Class pointziBridge = NSClassFromString(@"SHPointziBridge");
+        NSLog(@"Bridge for pointzi: %@.", pointziBridge);
+        if (pointziBridge)
+        {
+            [[NSNotificationCenter defaultCenter] addObserver:pointziBridge selector:@selector(bridgeHandler:) name:SH_InitBridge_Notification object:nil];
+        }
 #pragma GCC diagnostic pop
 #pragma clang diagnostic pop
         //finally post notification to let bridge ready.
@@ -250,13 +256,13 @@
         //some handlers initialize erlier
         self.installHandler = [[SHInstallHandler alloc] init];
 
-        self.autoIntegrateAppDelegate = YES;
+        self.autoIntegrateAppDelegate = NO;
         [self setupNotifications]; //move early so that Phonegap can handle remote notification in appDidFinishLaunching.
     }
     return self;
 }
 
-- (void)registerInstallForApp:(NSString *)appKey withDebugMode:(BOOL)isDebugMode
+- (void)registerInstallForApp:(nonnull NSString *)appKey withDebugMode:(BOOL)isDebugMode
 {
     if (self.isRegisterInstallForAppCalled)
     {
@@ -317,6 +323,10 @@
         //setup intercept app delegate
         if (self.autoIntegrateAppDelegate)
         {
+            if ([[UIApplication sharedApplication].delegate isKindOfClass:[SHInterceptor class]])
+            {
+                return; //already intercept, in case customer forcily do register again.
+            }
             self.appDelegateInterceptor = [[SHInterceptor alloc] init];  //strong property
             self.appDelegateInterceptor.firstResponder = self;  //weak property
             self.appDelegateInterceptor.secondResponder = [UIApplication sharedApplication].delegate;
@@ -332,8 +342,11 @@
         //Do route check for first launch, and must wait until this is done to continue.
         [[SHAppStatus sharedInstance] checkRouteWithCompleteHandler:^(BOOL isEnabled, NSString *hostUrl)
         {
-            [[NSUserDefaults standardUserDefaults] setObject:@(YES) forKey:@"RouteChecked"];
-            [[NSUserDefaults standardUserDefaults] synchronize];
+            if (!shStrIsEmpty(hostUrl)) //in case fail to get host url, give another try later.
+            {
+                [[NSUserDefaults standardUserDefaults] setObject:@(YES) forKey:@"RouteChecked"];
+                [[NSUserDefaults standardUserDefaults] synchronize];
+            }
             if (isEnabled && !shStrIsEmpty(hostUrl))
             {
                 dispatch_async(dispatch_get_main_queue(), ^
@@ -349,7 +362,18 @@
     }
 }
 
-- (void)registerInstallForApp:(NSString *)appKey withDebugMode:(BOOL)isDebugMode withiTunesId:(NSString *)iTunesId
+- (void)registerInstallForApp:(nonnull NSString *)appKey segmentId:(NSString *)segmentId withDebugMode:(BOOL)isDebugMode
+{
+    StreetHawk.segmentId = segmentId;
+    [StreetHawk registerInstallForApp:appKey withDebugMode:isDebugMode];
+}
+
+- (NSString *)segmentId
+{
+    return _segmentId;
+}
+
+- (void)registerInstallForApp:(nonnull NSString *)appKey withDebugMode:(BOOL)isDebugMode withiTunesId:(nullable NSString *)iTunesId
 {
     StreetHawk.itunesAppId = iTunesId;
     [StreetHawk registerInstallForApp:appKey withDebugMode:isDebugMode];
@@ -387,14 +411,23 @@
 
 - (NSString *)clientVersion
 {
-    return [NSString stringWithFormat:@"%@ (%@)", [[NSBundle mainBundle] infoDictionary][@"CFBundleShortVersionString"], [[NSBundle mainBundle] infoDictionary][@"CFBundleVersion"]];
+    NSString *clientVersion = [NSString stringWithFormat:@"%@ (%@)",
+                               [[NSBundle mainBundle] infoDictionary][@"CFBundleShortVersionString"],
+                               [[NSBundle mainBundle] infoDictionary][@"CFBundleVersion"]];
+    const NSInteger CLIENT_VERSION_MAX_LENGTH = 64;
+    if (clientVersion.length > CLIENT_VERSION_MAX_LENGTH)
+    {
+        SHLog(@"WARNING: ClientVersion (%@) is trimed to max length (%d).", clientVersion, CLIENT_VERSION_MAX_LENGTH);
+        clientVersion = [clientVersion substringToIndex:CLIENT_VERSION_MAX_LENGTH];
+    }
+    return clientVersion;
 }
 
 - (NSString *)version
 {
     //Framework version is upgraded by StreetHawkCore-Info.plist and StreetHawkCoreRes-Info.plist, but the version number is not accessible by code. StreetHawkCore-Info.plist is built as binrary in main App, StreetHawkCoreRes-Info.plist may be contained in main App but not guranteed. To make sure this version work, add a method with hard-coded version number.
     //Format: X.Y.Z, make sure X and Y and Z are from >= 0  and < 1000.
-    return @"1.8.8";
+    return @"1.10.1-beta+20180606134329";
 }
 
 - (SHInstall *)currentInstall
@@ -423,6 +456,12 @@
 
 - (SHDevelopmentPlatform)developmentPlatform
 {
+    //React-native check specific class exist
+    Class rcClass = NSClassFromString(@"RCTRootView");
+    if (rcClass)
+    {
+        return SHDevelopmentPlatform_ReactNative;
+    }
     return SHDevelopmentPlatform_Phonegap; //hard code, when distribute change for each platform.
 }
 
@@ -550,6 +589,50 @@
     [self shNotifyPageExit:page clearEnterHistory:YES/*for normal App calls, after exit clear history*/ logCompleteView:YES/*normal App call, this is manual exit a view so complete.*/];
 }
 
+- (void)shNotifyViewDidLoad:(nonnull UIViewController *)vc
+{
+    if (StreetHawk.developmentPlatform == SHDevelopmentPlatform_Xamarin)
+    {
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"SH_PointziBridge_ShowTip_Notification"
+                                                            object:nil
+                                                          userInfo:@{@"vc": vc}];
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"SH_PointziBridge_CustomFeed_Notification"
+                                                            object:nil
+                                                          userInfo:@{@"vc": vc}];
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"SH_PointziBridge_SuperTag_Notification"
+                                                            object:nil
+                                                          userInfo:@{@"vc": vc}];
+    }
+}
+
+- (void)shNotifyViewAppear:(nonnull UIViewController *)vc withPage:(nullable NSString *)page
+{
+    if (StreetHawk.developmentPlatform == SHDevelopmentPlatform_Xamarin)
+    {
+        [StreetHawk shNotifyPageEnter:page];
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"SH_PointziBridge_EnterVC_Notification"
+                                                            object:nil
+                                                          userInfo:@{@"vc": vc}];
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"SH_PointziBridge_ShowAuthor_Notification"
+                                                            object:nil
+                                                          userInfo:@{@"vc": vc}];
+    }
+}
+
+- (void)shNotifyViewDisappear:(nonnull UIViewController *)vc withPage:(nullable NSString *)page
+{
+    if (StreetHawk.developmentPlatform == SHDevelopmentPlatform_Xamarin)
+    {
+        [StreetHawk shNotifyPageExit:page];
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"SH_PointziBridge_ForceDismissTip_Notification"
+                                                            object:nil
+                                                          userInfo:@{@"vc": vc}];
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"SH_PointziBridge_ExitVC_Notification"
+                                                            object:nil
+                                                          userInfo:@{@"vc": vc}];
+    }
+}
+
 - (NSString *)getFormattedDateTime:(NSTimeInterval)seconds
 {
     return shFormatStreetHawkDate([NSDate dateWithTimeIntervalSince1970:seconds]);
@@ -631,19 +714,12 @@
 
 - (BOOL)openURL:(NSURL *)url
 {
-    BOOL handledBySDK = NO;
-    if (StreetHawk.developmentPlatform == SHDevelopmentPlatform_Native || StreetHawk.developmentPlatform == SHDevelopmentPlatform_Xamarin)
+    SHLog(@"StreetHawk open URL received: %@.", url.absoluteString);
+    SHDeepLinking *deepLinking = [[SHDeepLinking alloc] init];
+    BOOL handledBySDK = [deepLinking processDeeplinkingUrl:url withPushData:nil withIncreaseGrowth:YES];
+    if (handledBySDK)
     {
-        NSString *command = url.host;
-        if (command != nil && [command compare:@"launchvc" options:NSCaseInsensitiveSearch] == NSOrderedSame)
-        {
-            SHDeepLinking *deepLinking = [[SHDeepLinking alloc] init];
-            handledBySDK = [deepLinking launchDeepLinkingVC:url.absoluteString withPushData:nil increaseGrowthClick:YES];
-            if (handledBySDK)
-            {
-                return YES; //launchvc deeplinking is handled by StreetHawk
-            }
-        }
+        return YES;
     }
     if (!handledBySDK && StreetHawk.openUrlHandler != nil)
     {
@@ -858,8 +934,7 @@
              }];
         }
     }
-    if (isFromDelayLaunch //Phonegap handle remote notification happen before StreetHawk library get ready, so remote notification cannot be handled. Check delay launch options, if from remote notification, give it second chance to trigger again.
-        || ([[UIDevice currentDevice].systemVersion doubleValue] >= 10.0)) //iOS 10 do [UNUserNotificationCenter currentNotificationCenter].delegate = StreetHawk after AppDidFinishLaunch, causing not launched App cannot handle remote notification. Fix it by handling here.
+    if (isFromDelayLaunch /*Phonegap handle remote notification happen before StreetHawk library get ready, so remote notification cannot be handled. Check delay launch options, if from remote notification, give it second chance to trigger again */)
     {
         NSDictionary *notificationInfo = launchOptions[UIApplicationLaunchOptionsRemoteNotificationKey];
         if (notificationInfo != nil)
@@ -884,15 +959,7 @@
     if ([UIApplication sharedApplication].applicationState != UIApplicationStateBackground)/*avoid send visible log when App wake up in background. Here cannot use Active, its status is InActive for normal launch, Background for location launch.*/
     {
         NSMutableDictionary *dictComment = [NSMutableDictionary dictionary];
-        [dictComment setObject:@"App launch from not running." forKey:@"action"];
-        [[NSNotificationCenter defaultCenter] postNotificationName:@"SH_LMBridge_UpdateGeoLocation" object:nil]; //make value update
-        double lat = [[[NSUserDefaults standardUserDefaults] objectForKey:SH_GEOLOCATION_LAT] doubleValue];
-        double lng = [[[NSUserDefaults standardUserDefaults] objectForKey:SH_GEOLOCATION_LNG] doubleValue];
-        if (lat != 0 && lng != 0)
-        {
-            [dictComment setObject:@(lat) forKey:@"lat"];
-            [dictComment setObject:@(lng) forKey:@"lng"];
-        }
+        [dictComment setObject:@"App launch from not running." forKey:@"action"];        
         [StreetHawk sendLogForCode:LOG_CODE_APP_VISIBLE withComment:shSerializeObjToJson(dictComment)];
     }
 
@@ -961,15 +1028,7 @@
         if (!op.isCancelled)
         {
             NSMutableDictionary *dictComment = [NSMutableDictionary dictionary];
-            [dictComment setObject:@"App to BG." forKey:@"action"];
-            [[NSNotificationCenter defaultCenter] postNotificationName:@"SH_LMBridge_UpdateGeoLocation" object:nil]; //make value update
-            double lat = [[[NSUserDefaults standardUserDefaults] objectForKey:SH_GEOLOCATION_LAT] doubleValue];
-            double lng = [[[NSUserDefaults standardUserDefaults] objectForKey:SH_GEOLOCATION_LNG] doubleValue];
-            if (lat != 0 && lng != 0)
-            {
-                [dictComment setObject:@(lat) forKey:@"lat"];
-                [dictComment setObject:@(lng) forKey:@"lng"];
-            }
+            [dictComment setObject:@"App to BG." forKey:@"action"];            
             [StreetHawk sendLogForCode:LOG_CODE_APP_INVISIBLE withComment:shSerializeObjToJson(dictComment) forAssocId:nil withResult:100/*ignore*/ withHandler:^(id result, NSError *error)
             {
                 //Once start not cancel the install/log request, there are 10 minutes so make sure it can finish. Call endBackgroundTask after it's done.
@@ -1001,14 +1060,6 @@
     //Log here instead of applicationDidBecomeActive when interrupt by phone or permission dialog or control center or notification center, this is not called.
     NSMutableDictionary *dictComment = [NSMutableDictionary dictionary];
     [dictComment setObject:@"App opened from BG." forKey:@"action"];
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"SH_LMBridge_UpdateGeoLocation" object:nil]; //make value update
-    double lat = [[[NSUserDefaults standardUserDefaults] objectForKey:SH_GEOLOCATION_LAT] doubleValue];
-    double lng = [[[NSUserDefaults standardUserDefaults] objectForKey:SH_GEOLOCATION_LNG] doubleValue];
-    if (lat != 0 && lng != 0)
-    {
-        [dictComment setObject:@(lat) forKey:@"lat"];
-        [dictComment setObject:@(lng) forKey:@"lng"];
-    }
     [StreetHawk sendLogForCode:LOG_CODE_APP_VISIBLE withComment:shSerializeObjToJson(dictComment)];
     [StreetHawk shNotifyPageEnter:nil/*not know previoius page, but can get from history*/ sendEnter:YES sendExit:NO/*Not send exit for App go to FG*/];
 }
@@ -1167,7 +1218,10 @@
 //2. NOT called when App in FG.
 //3. NOT called when click notification banner directly.
 //This delegate callback not mixed with above `didReceiveRemoteNotification`.
-- (void)application:(UIApplication *)application handleActionWithIdentifier:(NSString *)identifier forRemoteNotification:(NSDictionary *)userInfo completionHandler:(void (^)())completionHandler
+- (void)application:(UIApplication *)application
+handleActionWithIdentifier:(NSString *)identifier
+forRemoteNotification:(NSDictionary *)userInfo
+  completionHandler:(nonnull void (^)())completionHandler
 {
     BOOL customerAppResponse = [self.appDelegateInterceptor.secondResponder respondsToSelector:@selector(application:handleActionWithIdentifier:forRemoteNotification:completionHandler:)];
     NSMutableDictionary *dictUserInfo = [NSMutableDictionary dictionary];
@@ -1207,7 +1261,10 @@
     }
 }
 
-- (void)application:(UIApplication *)application handleActionWithIdentifier:(NSString *)identifier forLocalNotification:(UILocalNotification *)notification completionHandler:(void (^)())completionHandler
+- (void)application:(UIApplication *)application
+handleActionWithIdentifier:(NSString *)identifier
+forLocalNotification:(UILocalNotification *)notification
+  completionHandler:(void (^)())completionHandler
 {
     BOOL customerAppResponse = [self.appDelegateInterceptor.secondResponder respondsToSelector:@selector(application:handleActionWithIdentifier:forLocalNotification:completionHandler:)];
     NSMutableDictionary *dictUserInfo = [NSMutableDictionary dictionary];
@@ -1355,7 +1412,11 @@
 
 - (void)sendModuleTags
 {
-    if (StreetHawk.developmentPlatform == SHDevelopmentPlatform_Native || StreetHawk.developmentPlatform == SHDevelopmentPlatform_Phonegap || StreetHawk.developmentPlatform == SHDevelopmentPlatform_Xamarin) //all these can reflect bridge class.
+    //all these can reflect bridge class.
+    if (StreetHawk.developmentPlatform == SHDevelopmentPlatform_Native
+        || StreetHawk.developmentPlatform == SHDevelopmentPlatform_Phonegap
+        || StreetHawk.developmentPlatform == SHDevelopmentPlatform_Xamarin
+        || StreetHawk.developmentPlatform == SHDevelopmentPlatform_ReactNative)
     {
         Class growthBridge = NSClassFromString(@"SHGrowthBridge");
         NSString *growthCurrent = (growthBridge == nil) ? @"false" : @"true";
@@ -1372,6 +1433,11 @@
         {
             [StreetHawk tagString:pushCurrent forKey:@"sh_module_push"];
             [[NSUserDefaults standardUserDefaults] setObject:pushCurrent forKey:@"sh_module_push"];
+            // set sh_push_denied as true when sh_module_push not be included
+            if ([pushCurrent compare:@"false"] == NSOrderedSame) {
+                [StreetHawk tagString:@"true" forKey:@"sh_push_denied"];
+                SHLog(@"sh_push_denied set as true due to sh location module not be included in this app");
+            }
         }
         Class locationBridge = NSClassFromString(@"SHLocationBridge");
         NSString *locationCurrent = (locationBridge == nil) ? @"false" : @"true";
@@ -1380,6 +1446,11 @@
         {
             [StreetHawk tagString:locationCurrent forKey:@"sh_module_location"];
             [[NSUserDefaults standardUserDefaults] setObject:locationCurrent forKey:@"sh_module_location"];
+            // set sh_location_denied as true when sh_module_location not be included
+            if ([locationCurrent compare:@"false"] == NSOrderedSame) {
+                [StreetHawk tagString:@"true" forKey:@"sh_location_denied"];
+                SHLog(@"sh_location_denied set as true due to sh location module not be included in this app");
+            }
         }
         Class geofenceBridge = NSClassFromString(@"SHGeofenceBridge");
         NSString *geofenceCurrent = (geofenceBridge == nil) ? @"false" : @"true";
@@ -1412,6 +1483,14 @@
         {
             [StreetHawk tagString:feedsCurrent forKey:@"sh_module_feeds"];
             [[NSUserDefaults standardUserDefaults] setObject:feedsCurrent forKey:@"sh_module_feeds"];
+        }        
+        Class pointziBridge = NSClassFromString(@"SHPointziBridge");
+        NSString *pointziCurrent = (pointziBridge == nil) ? @"false" : @"true";
+        NSString *pointziSent = [[NSUserDefaults standardUserDefaults] objectForKey:@"sh_module_pointzi"];
+        if ([pointziCurrent compare:pointziSent] != NSOrderedSame)
+        {
+            [StreetHawk tagString:pointziCurrent forKey:@"sh_module_pointzi"];
+            [[NSUserDefaults standardUserDefaults] setObject:pointziCurrent forKey:@"sh_module_pointzi"];
         }
         [[NSUserDefaults standardUserDefaults] synchronize];
     }
@@ -1579,7 +1658,7 @@
     NSAssert3(NO, @"Crash intentionally: NSAssert3 in SDK, %@, %@, %@.", @"param1", @"param2", @"param3");
     NSAssert4(NO, @"Crash intentionally: NSAssert4 in SDK, %@, %@, %@, %@.", @"param1", @"param2", @"param3", @"param4");
     NSAssert5(NO, @"Crash intentionally: NSAssert5 in SDK, %@, %@, %@, %@, %@.", @"param1", @"param2", @"param3", @"param4", @"param5");
-    assert(NO && @"Crash intentionally: assert in SDK.");
+    assert(NO);
 }
 
 @end
@@ -1588,7 +1667,7 @@
 
 //Some key requires value has some format, check here. It returns checking result and log warning.
 - (BOOL)checkTagValue:(NSObject *)value forKey:(NSString *)key;
-//Key has some rule, for example no more than 30 chars. Check and return suitable key, meantime log warning.
+//Key has some rule, for example no more than 500 chars. Check and return suitable key, meantime log warning.
 - (NSString *)checkTagKey:(NSString *)key;
 
 @end
@@ -1716,10 +1795,10 @@
 
 - (NSString *)checkTagKey:(NSString *)key
 {
-    if (key.length > 30)
+    if (key.length > 500)
     {
-        key = [key substringToIndex:30];
-        SHLog(@"WARNING: Tag key should be no more than 30 characters. Your key will be truncated as \"%@\".", key);
+        key = [key substringToIndex:500];
+        SHLog(@"WARNING: Tag key should be no more than 500 characters. Your key will be truncated as \"%@\".", key);
     }
     return key;
 }
@@ -1804,6 +1883,7 @@
                                {
                                    self.currentInstall = (SHInstall *)result;
                                    dispatch_semaphore_signal(self.install_semaphore); //make sure currentInstall is set to latest.
+                                   [[SHHTTPSessionManager sharedInstance].requestSerializer setValue:!shStrIsEmpty(StreetHawk.currentInstall.suid) ? StreetHawk.currentInstall.suid : @"null" forHTTPHeaderField:@"X-Installid"]; //direct set for next request
                                    //save sent install parameters for later compare, because install does not have local cache, and avoid query install/details/ from server. Only save it after successfully install/register.
                                    [[NSUserDefaults standardUserDefaults] setObject:NONULL(StreetHawk.appKey) forKey:SentInstall_AppKey];
                                    [[NSUserDefaults standardUserDefaults] setObject:StreetHawk.clientVersion forKey:SentInstall_ClientVersion];
@@ -1835,6 +1915,7 @@
 }
 
 NSString *SentInstall_AppKey = @"SentInstall_AppKey";
+NSString *SentInstall_SegmentId = @"SentInstall_SegmentId";
 NSString *SentInstall_ClientVersion = @"SentInstall_ClientVersion";
 NSString *SentInstall_ShVersion = @"SentInstall_ShVersion";
 NSString *SentInstall_Mode = @"SentInstall_Mode";

@@ -193,8 +193,8 @@ enum
             if (visibleTime != nil)
             {
                 NSMutableDictionary *dictAppSession = [NSMutableDictionary dictionary];
-                dictAppSession[@"visible"] = shFormatStreetHawkDate(visibleTime);
-                dictAppSession[@"invisible"] = shFormatStreetHawkDate([NSDate date]);
+                dictAppSession[@"visible"] = shFormatISODate(visibleTime);
+                dictAppSession[@"invisible"] = shFormatISODate([NSDate date]);
                 dictAppSession[@"duration"] = @([[NSDate date] timeIntervalSinceDate:visibleTime]);
                 [StreetHawk sendLogForCode:LOG_CODE_APP_COMPLETE withComment:shSerializeObjToJson(dictAppSession)];
                 [[NSUserDefaults standardUserDefaults] setObject:@(0) forKey:@"Previous_Visible_Time"];
@@ -215,7 +215,15 @@ enum
         [[NSNotificationCenter defaultCenter] postNotificationName:@"SH_LMBridge_UpdateGeoLocation" object:nil]; //make value update
         double lat_deprecate = [[[NSUserDefaults standardUserDefaults] objectForKey:SH_GEOLOCATION_LAT] doubleValue];
         double lng_deprecate = [[[NSUserDefaults standardUserDefaults] objectForKey:SH_GEOLOCATION_LNG] doubleValue];
-        NSString *values = [NSString stringWithFormat: @"0, %ld, '%@', %ld, '%@', %f, %f, 0, '%@', '%ld'", (long)session, shFormatStreetHawkDate(created), (long)code, [comment stringByReplacingOccurrencesOfString:@"'" withString:@"''"], lat_deprecate, lng_deprecate, shStrIsEmpty(assocId)?@"0":assocId/*avoid insert (null)*/, (long)result];
+        NSString *values = [NSString stringWithFormat:@"0, %ld, '%@', %ld, '%@', %f, %f, 0, '%@', '%ld'",
+                            (long)session,
+                            shFormatISODate(created),
+                            (long)code,
+                            [comment stringByReplacingOccurrencesOfString:@"'" withString:@"''"],
+                            lat_deprecate,
+                            lng_deprecate,
+                            shStrIsEmpty(assocId)?@"0":assocId/*avoid insert (null)*/,
+                            (long)result];
         NSString *sql_str = [NSString stringWithFormat:@"INSERT OR REPLACE INTO '%@' (%@) VALUES (%@)", tableName, columns, values];
         @synchronized(self)
         {
@@ -235,7 +243,7 @@ enum
             int logid = (int)sqlite3_last_insert_rowid(database);
             [[NSUserDefaults standardUserDefaults] setObject:@(logid) forKey:MAX_LOGID];
             [[NSUserDefaults standardUserDefaults] synchronize];
-            SHLog(@"LOG (%d @ %@) <%d> %@", logid, shFormatStreetHawkDate(created), code, comment);
+            SHLog(@"LOG (%d @ %@) <%d> %@", logid, shFormatISODate(created), code, comment);
         }
         BOOL isForce = NO;
         NSArray *arrayPriorityCodes = [[NSUserDefaults standardUserDefaults] objectForKey:@"APPSTATUS_PRIORITYCODES"];
@@ -247,7 +255,9 @@ enum
             || (code == LOG_CODE_TIMEOFFSET)  //immediately send for time utc offset change
             || (code == LOG_CODE_HEARTBEAT)  //immediately send for heart beat
             || (code == LOG_CODE_PUSH_RESULT) //immediately send for pushresult
-            || (code == LOG_CODE_FEED_RESULT); //immediately send for feedresult
+            || (code == LOG_CODE_FEED_RESULT) //immediately send for feedresult
+            || (code == LOG_CODE_VIEW_ENTER || code == LOG_CODE_VIEW_EXIT || code == LOG_CODE_VIEW_COMPLETE) //immediately send for page enter/exit
+            || (code == LOG_CODE_APP_LAUNCH); //add app launch in wikipedia case, register app in a vc didLoad, and when second fail register there is no immediate logline to make register request sent.
         }
         else
         {
@@ -490,7 +500,9 @@ enum
 - (NSMutableArray *)loadLogRecords
 {
     NSMutableArray *logRecords = [NSMutableArray array];
-    NSString *select_sql_str = [NSString stringWithFormat:@"SELECT * from '%@' WHERE status = 0 ORDER BY logid", tableName];
+    NSString *select_sql_str = [NSString stringWithFormat:@"SELECT * from '%@' WHERE status = 0 ORDER BY logid LIMIT %d",
+                                tableName,
+                                LOG_UPLOAD_INTERVAL];
     @synchronized(self)
     {
         sqlite3_stmt *select_sql = NULL;
@@ -561,6 +573,15 @@ enum
                 NSDictionary *dictComment = shParseObjectToDict(shCstringToNSString(comment));
                 NSAssert(dictComment != nil, @"Fail to parse code 22 geofence json.");
                 logRecord[@"json"] = dictComment;
+                //Geofence requires latitude/longitude now, as server wants to calculate geofence by itself.
+                if (lat_deprecate != 0/*automatical location not allow 0 as it means not detected*/)
+                {
+                    logRecord[@"latitude"] = @(lat_deprecate);
+                }
+                if (lng_deprecate != 0)
+                {
+                    logRecord[@"longitude"] = @(lng_deprecate);
+                }
             }
             //Code: 8050. UTC Offset
             else if (code == LOG_CODE_TIMEOFFSET)
@@ -586,33 +607,14 @@ enum
             //Codes: 8103, 8104. App FG and BG
             else if (code == LOG_CODE_APP_VISIBLE || code == LOG_CODE_APP_INVISIBLE)
             {
-                NSDictionary *dictComment = shParseObjectToDict(shCstringToNSString(comment));
-                NSAssert(dictComment != nil, @"Fail to parse App visible/invisible comment.");
-                double lat = 0;
-                if ([dictComment.allKeys containsObject:@"lat"])
+                //comment is not useful, just read line comment.
+                if (lat_deprecate != 0/*automatical location not allow 0 as it means not detected*/)
                 {
-                    lat = [dictComment[@"lat"] doubleValue];
+                    logRecord[@"latitude"] = @(lat_deprecate);
                 }
-                if (lat == 0)
+                if (lng_deprecate != 0)
                 {
-                    lat = lat_deprecate;
-                }
-                double lng = 0;
-                if ([dictComment.allKeys containsObject:@"lng"])
-                {
-                    lng = [dictComment[@"lng"] doubleValue];
-                }
-                if (lng == 0)
-                {
-                    lng = lng_deprecate;
-                }
-                if (lat != 0/*automatical location not allow 0 as it means not detected*/)
-                {
-                    logRecord[@"latitude"] = @(lat);
-                }
-                if (lng != 0)
-                {
-                    logRecord[@"longitude"] = @(lng);
+                    logRecord[@"longitude"] = @(lng_deprecate);
                 }
             }
             //Code: 8105. Sessions
@@ -695,11 +697,26 @@ enum
             //Code: 8999. Add Tag
             else if (code == LOG_CODE_TAG_INCREMENT || code == LOG_CODE_TAG_DELETE || code == LOG_CODE_TAG_ADD)
             {
-                NSDictionary *dictTag = shParseObjectToDict(shCstringToNSString(comment));
-                NSAssert(dictTag != nil, @"Fail to parse tag dictionary.");
-                for (NSString *key in dictTag.allKeys)
+                NSDictionary *dictComment = shParseObjectToDict(shCstringToNSString(comment));
+                NSAssert(dictComment != nil, @"Fail to parse code 8997/8998/8999 dictionary.");
+                NSMutableDictionary *dictJson = [NSMutableDictionary dictionary];
+                for (NSString *key in dictComment.allKeys)
                 {
-                    logRecord[key] = dictTag[key];
+                    if ([key compare:@"x"] != NSOrderedSame
+                        && [key compare:@"y"] != NSOrderedSame
+                        && [key compare:@"label"] != NSOrderedSame)
+                    {
+                        logRecord[key] = dictComment[key];
+                    }
+                    else
+                    {
+                        dictJson[key] = dictComment[key];
+                    }
+                }
+                //super tag use increment tag and want to store in json
+                if (dictJson.allKeys.count > 0)
+                {
+                    logRecord[@"json"] = dictJson;
                 }
             }
             else
@@ -801,7 +818,13 @@ enum
             {
                 //NSAssert(NO, @"Log meets error (%@) for records: %@.", logRequest.error, logRecords); //comment this as dev returns error and crash App, make it cannot continue.
             }
-            if (error.code == 404)
+            NSInteger statusCode = 0;
+            if ([task.response isKindOfClass:[NSHTTPURLResponse class]])
+            {
+                NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)task.response;
+                statusCode = httpResponse.statusCode;
+            }
+            if (error.code == 404 || statusCode == 404)
             {
                 StreetHawk.currentInstall = nil;
                 [StreetHawk registerOrUpdateInstallWithHandler:nil];
@@ -866,7 +889,7 @@ enum
     //These not need to update
     //Remote notification: APNS_DISABLE_TIMESTAMP, APNS_SENT_DISABLE_TIMESTAMP, APNS_DEVICE_TOKEN. Because old data is correct when register new install, and old data is passed in install/register to server. Note: if revoked=timestamp, this will make revoked earlier than created, it's correct as revoked means first time when notification is disabled.
     //Sent history: SentInstall_AppKey, SentInstall_ClientVersion, SentInstall_ShVersion, SentInstall_Mode, SentInstall_Carrier, SentInstall_OSVersion, SentInstall_IBeacon. They are reset after install/register.
-    //Module bridge: SH_GEOLOCATION_LAT, SH_GEOLOCATION_LNG, SH_BEACON_BLUETOOTH, SH_BEACON_iBEACON. They are reset after launch.
+    //Module bridge: SH_GEOLOCATION_LAT, SH_GEOLOCATION_LNG, SH_BEACON_BLUETOOTH, SH_BEACON_iBEACON, SH_INSTALL_TOKEN. They are reset after launch.
     //Crash report: CrashLog_MD5. Make sure not sent duplicate crash report again in new install.
     //Customer setting: ENABLE_LOCATION_SERVICE, ENABLE_PUSH_NOTIFICATION, FRIENDLYNAME_KEY, SH_INTERACTIVEPUSH_KEY. Cannot reset, must keep same setting as previous install.
     //Keep old version and adjust by App itself: APPKEY_KEY, NETWORK_RECOVER_TIME, APPSTATUS_STREETHAWKENABLED, APPSTATUS_DEFAULT_HOST, APPSTATUS_ALIVE_HOST, APPSTATUS_GROWTH_HOST, APPSTATUS_UPLOAD_LOCATION, APPSTATUS_SUBMIT_FRIENDLYNAME, APPSTATUS_SUBMIT_INTERACTIVEBUTTONS, APPSTATUS_CHECK_TIME, APPSTATUS_APPSTOREID, APPSTATUS_DISABLECODES, APPSTATUS_PRIORITYCODES, REGULAR_HEARTBEAT_LOGTIME, REGULAR_LOCATION_LOGTIME, SMART_PUSH_PAYLOAD, SH_GEOFENCE_LATLNG_SENTTIME. These will be updated automatically by App, keep old version till next App update them.
@@ -926,7 +949,9 @@ enum
     {
         NSAssert(shStrIsEmpty(assocId), @"Try to do none push or feed related log (%@) with assoc id (%@).", comment, assocId);
     }
-    NSAssert(shStrIsEmpty(StreetHawk.appKey)/*when app not setup, logger is not initialized on purpose*/ || self.logger != nil, @"Lose logline due to logger is not ready.");
+//    NSAssert(shStrIsEmpty(StreetHawk.appKey)/*when app not setup, logger is not initialized on purpose*/
+//             || shStrIsEmpty([[SHAppStatus sharedInstance] aliveHostForVersion:SHHostVersion_Unknown]) /*route hasn't return host server*/
+//             || self.logger != nil, @"Lose logline due to logger is not ready.");
     [self.logger logComment:comment atTime:[NSDate date] forCode:code forAssocId:assocId withResult:result withHandler:handler];
 }
 
@@ -965,14 +990,14 @@ enum
                 NSObject *valueObj = dict[@"datetime"];
                 if ([valueObj isKindOfClass:[NSDate class]])
                 {
-                    mutableDict[@"datetime"] = shFormatStreetHawkDate((NSDate *)valueObj);
+                    mutableDict[@"datetime"] = shFormatISODate((NSDate *)valueObj);
                 }
                 else if ([valueObj isKindOfClass:[NSString class]])
                 {
                     NSDate *formatDate = shParseDate((NSString *)valueObj, 0);
                     if (formatDate != nil)
                     {
-                        mutableDict[@"datetime"] = shFormatStreetHawkDate(formatDate);
+                        mutableDict[@"datetime"] = shFormatISODate(formatDate);
                     }
                     else
                     {

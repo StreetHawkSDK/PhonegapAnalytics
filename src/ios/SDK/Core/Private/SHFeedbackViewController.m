@@ -16,8 +16,6 @@
  */
 
 #import "SHFeedbackViewController.h"
-//header from StreetHawk
-#import "SHPresentDialog.h" //for present modal dialog
 
 @implementation SHFeedbackViewController
 
@@ -70,7 +68,10 @@
     {
         self.inputHandler(YES, self.feedbackTitle, self.textboxContent.text);
     }
-    [self dismissModalDialogViewController];
+    if (self.parentViewController == nil)
+    {
+        [self dismissOnTop];
+    }
 }
 
 - (IBAction)buttonCancelClicked:(id)sender
@@ -79,7 +80,10 @@
     {
         self.inputHandler(NO, nil, nil);
     }
-    [self dismissModalDialogViewController];
+    if (self.parentViewController == nil)
+    {
+        [self dismissOnTop];
+    }
 }
 
 #pragma mark - UITextFieldDelegate and UITextViewDelegate handler
