@@ -219,6 +219,7 @@
 <header-file src="src/ios/SDK/Core/Publish/SHUtils.h" />
 <source-file src="src/ios/SDK/Core/Publish/SHUtils.m" />
 <header-file src="src/ios/SDK/Core/Publish/StreetHawkCore.h" />
+<!--
 <header-file src="src/ios/SDK/Crash/Internal/SHCrashHandler.h" />
 <source-file src="src/ios/SDK/Crash/Internal/SHCrashHandler.m" />
 <header-file src="src/ios/SDK/Crash/Private/SHCrashBridge.h" />
@@ -237,6 +238,7 @@
 <source-file src="src/ios/SDK/Growth/Private/SHGrowthBridge.m" />
 <header-file src="src/ios/SDK/Growth/Publish/SHApp+Growth.h" />
 <source-file src="src/ios/SDK/Growth/Publish/SHApp+Growth.m" />
+-->
 <header-file src="src/ios/SDK/Location/Internal/SHLocationManager.h" />
 <source-file src="src/ios/SDK/Location/Internal/SHLocationManager.m" />
 <header-file src="src/ios/SDK/Location/Private/SHBeaconBridge.h" />
@@ -251,6 +253,7 @@
 <source-file src="src/ios/SDK/Location/Private/SHLocationBridge.m" />
 <header-file src="src/ios/SDK/Location/Publish/SHApp+Location.h" />
 <source-file src="src/ios/SDK/Location/Publish/SHApp+Location.m" />
+<!--
 <header-file src="src/ios/SDK/Notification/Internal/SHAlertSettingsViewController.h" />
 <source-file src="src/ios/SDK/Notification/Internal/SHAlertSettingsViewController.m" />
 <header-file src="src/ios/SDK/Notification/Internal/SHNotificationHandler.h" />
@@ -271,6 +274,7 @@
 <source-file src="src/ios/SDK/Notification/Publish/InteractivePush.m" />
 <header-file src="src/ios/SDK/Notification/Publish/SHApp+Notification.h" />
 <source-file src="src/ios/SDK/Notification/Publish/SHApp+Notification.m" />
+-->
 <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFHTTPSessionManager.h" />
 <source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFHTTPSessionManager.m" />
 <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFNetworkReachabilityManager.h" />
