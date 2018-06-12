@@ -116,8 +116,6 @@
         <source-file src="src/ios/SDK/Core/Internal/SHInstallHandler.m" />
         <header-file src="src/ios/SDK/Core/Internal/SHLogger.h" />
         <source-file src="src/ios/SDK/Core/Internal/SHLogger.m" />        
-        <header-file src="src/ios/SDK/Core/Internal/SHUtils.h" />
-        <source-file src="src/ios/SDK/Core/Internal/SHUtils.m" />
         <header-file src="src/ios/SDK/Core/Internal/SHViewController.h" />
         <source-file src="src/ios/SDK/Core/Internal/SHViewController.m" />
         <header-file src="src/ios/SDK/Core/Private/SHActionSheet.h" />
@@ -154,6 +152,8 @@
         <source-file src="src/ios/SDK/Core/Publish/SHObject.m" />
         <header-file src="src/ios/SDK/Core/Publish/SHTypes.h" />
         <header-file src="src/ios/SDK/Core/Publish/StreetHawkCore.h" />
+        <header-file src="src/ios/SDK/Core/Publish/SHUtils.h" />
+        <source-file src="src/ios/SDK/Core/Publish/SHUtils.m" />
         <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFHTTPSessionManager.h" />
         <source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFHTTPSessionManager.m" />
         <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFNetworking.h" />
