@@ -241,6 +241,7 @@
 -->
 <header-file src="src/ios/SDK/Location/Internal/SHLocationManager.h" />
 <source-file src="src/ios/SDK/Location/Internal/SHLocationManager.m" />
+<!--
 <header-file src="src/ios/SDK/Location/Private/SHBeaconBridge.h" />
 <source-file src="src/ios/SDK/Location/Private/SHBeaconBridge.m" />
 <header-file src="src/ios/SDK/Location/Private/SHBeaconStatus.h" />
@@ -251,6 +252,7 @@
 <source-file src="src/ios/SDK/Location/Private/SHGeofenceStatus.m" />
 <header-file src="src/ios/SDK/Location/Private/SHLocationBridge.h" />
 <source-file src="src/ios/SDK/Location/Private/SHLocationBridge.m" />
+-->
 <header-file src="src/ios/SDK/Location/Publish/SHApp+Location.h" />
 <source-file src="src/ios/SDK/Location/Publish/SHApp+Location.m" />
 <!--
