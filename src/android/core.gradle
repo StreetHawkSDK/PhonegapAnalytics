@@ -1,8 +1,8 @@
 repositories {
-        maven { url "http://pkg.streethawk.com/artifactory/streethawk" }
-    }
+    maven { url "http://pkg.streethawk.com/artifactory/streethawk" }
+}
 dependencies {
-       compile 'com.streethawk:core:latest.release'
+    compile 'com.streethawk:core:latest.release'
 }
 
 

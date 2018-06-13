@@ -112,13 +112,14 @@
         <source-file src="src/ios/Streethawk.m" />
         
         <!-- Plugin native SDK -->
-<!-- 
         <header-file src="src/ios/SDK/Core/Internal/SHAlertView.h" />
         <source-file src="src/ios/SDK/Core/Internal/SHAlertView.m" />
+        <header-file src="src/ios/SDK/Core/Internal/SHCoverView.h" />
+        <source-file src="src/ios/SDK/Core/Internal/SHCoverView.m" />
         <header-file src="src/ios/SDK/Core/Internal/SHInstallHandler.h" />
         <source-file src="src/ios/SDK/Core/Internal/SHInstallHandler.m" />
         <header-file src="src/ios/SDK/Core/Internal/SHLogger.h" />
-        <source-file src="src/ios/SDK/Core/Internal/SHLogger.m" />        
+        <source-file src="src/ios/SDK/Core/Internal/SHLogger.m" />
         <header-file src="src/ios/SDK/Core/Internal/SHViewController.h" />
         <source-file src="src/ios/SDK/Core/Internal/SHViewController.m" />
         <header-file src="src/ios/SDK/Core/Private/SHActionSheet.h" />
@@ -137,8 +138,6 @@
         <source-file src="src/ios/SDK/Core/Private/SHHTTPSessionManager.m" />
         <header-file src="src/ios/SDK/Core/Private/SHInterceptor.h" />
         <source-file src="src/ios/SDK/Core/Private/SHInterceptor.m" />
-        <header-file src="src/ios/SDK/Core/Private/SHPresentDialog.h" />
-        <source-file src="src/ios/SDK/Core/Private/SHPresentDialog.m" compiler-flags="-fno-objc-arc" />
         <header-file src="src/ios/SDK/Core/Publish/PushDataForApplication.h" />
         <source-file src="src/ios/SDK/Core/Publish/PushDataForApplication.m" />
         <header-file src="src/ios/SDK/Core/Publish/SHApp.h" />
@@ -152,14 +151,18 @@
         <header-file src="src/ios/SDK/Core/Publish/SHObject.h" />
         <source-file src="src/ios/SDK/Core/Publish/SHObject.m" />
         <header-file src="src/ios/SDK/Core/Publish/SHTypes.h" />
-        <header-file src="src/ios/SDK/Core/Publish/StreetHawkCore.h" />
         <header-file src="src/ios/SDK/Core/Publish/SHUtils.h" />
         <source-file src="src/ios/SDK/Core/Publish/SHUtils.m" />
+        <header-file src="src/ios/SDK/Core/Publish/StreetHawkCore.h" />
+        <header-file src="src/ios/SDK/Location/Internal/SHLocationManager.h" />
+        <source-file src="src/ios/SDK/Location/Internal/SHLocationManager.m" />
+        <header-file src="src/ios/SDK/Location/Publish/SHApp+Location.h" />
+        <source-file src="src/ios/SDK/Location/Publish/SHApp+Location.m" />
         <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFHTTPSessionManager.h" />
         <source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFHTTPSessionManager.m" />
-        <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFNetworking.h" />
         <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFNetworkReachabilityManager.h" />
         <source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFNetworkReachabilityManager.m" />
+        <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFNetworking.h" />
         <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFSecurityPolicy.h" />
         <source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFSecurityPolicy.m" />
         <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFURLRequestSerialization.h" />
@@ -168,130 +171,6 @@
         <source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFURLResponseSerialization.m" />
         <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFURLSessionManager.h" />
         <source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFURLSessionManager.m" />
-        <header-file src="src/ios/SDK/ThirdParty/MBProgressHUD/SHMBProgressHUD.h" />
-        <source-file src="src/ios/SDK/ThirdParty/MBProgressHUD/SHMBProgressHUD.m" />
-        
-        #Location source code used in three plugins, add in core to avoid duplication.
-        <header-file src="src/ios/SDK/Location/Internal/SHLocationManager.h" />
-        <source-file src="src/ios/SDK/Location/Internal/SHLocationManager.m" />
-        <header-file src="src/ios/SDK/Location/Publish/SHApp+Location.h" />
-        <source-file src="src/ios/SDK/Location/Publish/SHApp+Location.m" />
-        <header-file src="src/ios/SDK/ThirdParty/Reachability/SHReachability.h" />
-        <source-file src="src/ios/SDK/ThirdParty/Reachability/SHReachability.m" />
-        -->
-<header-file src="src/ios/SDK/Core/Internal/SHAlertView.h" />
-<source-file src="src/ios/SDK/Core/Internal/SHAlertView.m" />
-<header-file src="src/ios/SDK/Core/Internal/SHCoverView.h" />
-<source-file src="src/ios/SDK/Core/Internal/SHCoverView.m" />
-<header-file src="src/ios/SDK/Core/Internal/SHInstallHandler.h" />
-<source-file src="src/ios/SDK/Core/Internal/SHInstallHandler.m" />
-<header-file src="src/ios/SDK/Core/Internal/SHLogger.h" />
-<source-file src="src/ios/SDK/Core/Internal/SHLogger.m" />
-<header-file src="src/ios/SDK/Core/Internal/SHViewController.h" />
-<source-file src="src/ios/SDK/Core/Internal/SHViewController.m" />
-<header-file src="src/ios/SDK/Core/Private/SHActionSheet.h" />
-<source-file src="src/ios/SDK/Core/Private/SHActionSheet.m" />
-<header-file src="src/ios/SDK/Core/Private/SHAppStatus.h" />
-<source-file src="src/ios/SDK/Core/Private/SHAppStatus.m" />
-<header-file src="src/ios/SDK/Core/Private/SHChoiceViewController.h" />
-<source-file src="src/ios/SDK/Core/Private/SHChoiceViewController.m" />
-<header-file src="src/ios/SDK/Core/Private/SHDeepLinking.h" />
-<source-file src="src/ios/SDK/Core/Private/SHDeepLinking.m" />
-<header-file src="src/ios/SDK/Core/Private/SHFeedbackQueue.h" />
-<source-file src="src/ios/SDK/Core/Private/SHFeedbackQueue.m" />
-<header-file src="src/ios/SDK/Core/Private/SHFeedbackViewController.h" />
-<source-file src="src/ios/SDK/Core/Private/SHFeedbackViewController.m" />
-<header-file src="src/ios/SDK/Core/Private/SHHTTPSessionManager.h" />
-<source-file src="src/ios/SDK/Core/Private/SHHTTPSessionManager.m" />
-<header-file src="src/ios/SDK/Core/Private/SHInterceptor.h" />
-<source-file src="src/ios/SDK/Core/Private/SHInterceptor.m" />
-<header-file src="src/ios/SDK/Core/Publish/PushDataForApplication.h" />
-<source-file src="src/ios/SDK/Core/Publish/PushDataForApplication.m" />
-<header-file src="src/ios/SDK/Core/Publish/SHApp.h" />
-<source-file src="src/ios/SDK/Core/Publish/SHApp.m" />
-<header-file src="src/ios/SDK/Core/Publish/SHBaseViewController.h" />
-<source-file src="src/ios/SDK/Core/Publish/SHBaseViewController.m" />
-<header-file src="src/ios/SDK/Core/Publish/SHFriendlyNameObject.h" />
-<source-file src="src/ios/SDK/Core/Publish/SHFriendlyNameObject.m" />
-<header-file src="src/ios/SDK/Core/Publish/SHInstall.h" />
-<source-file src="src/ios/SDK/Core/Publish/SHInstall.m" />
-<header-file src="src/ios/SDK/Core/Publish/SHObject.h" />
-<source-file src="src/ios/SDK/Core/Publish/SHObject.m" />
-<header-file src="src/ios/SDK/Core/Publish/SHTypes.h" />
-<header-file src="src/ios/SDK/Core/Publish/SHUtils.h" />
-<source-file src="src/ios/SDK/Core/Publish/SHUtils.m" />
-<header-file src="src/ios/SDK/Core/Publish/StreetHawkCore.h" />
-<!--
-<header-file src="src/ios/SDK/Crash/Internal/SHCrashHandler.h" />
-<source-file src="src/ios/SDK/Crash/Internal/SHCrashHandler.m" />
-<header-file src="src/ios/SDK/Crash/Private/SHCrashBridge.h" />
-<source-file src="src/ios/SDK/Crash/Private/SHCrashBridge.m" />
-<header-file src="src/ios/SDK/Crash/Publish/SHApp+Crash.h" />
-<source-file src="src/ios/SDK/Crash/Publish/SHApp+Crash.m" />
-<header-file src="src/ios/SDK/Feed/Private/SHFeedBridge.h" />
-<source-file src="src/ios/SDK/Feed/Private/SHFeedBridge.m" />
-<header-file src="src/ios/SDK/Feed/Publish/SHApp+Feed.h" />
-<source-file src="src/ios/SDK/Feed/Publish/SHApp+Feed.m" />
-<header-file src="src/ios/SDK/Feed/Publish/SHFeedObject.h" />
-<source-file src="src/ios/SDK/Feed/Publish/SHFeedObject.m" />
-<header-file src="src/ios/SDK/Growth/Private/SHGrowth.h" />
-<source-file src="src/ios/SDK/Growth/Private/SHGrowth.m" />
-<header-file src="src/ios/SDK/Growth/Private/SHGrowthBridge.h" />
-<source-file src="src/ios/SDK/Growth/Private/SHGrowthBridge.m" />
-<header-file src="src/ios/SDK/Growth/Publish/SHApp+Growth.h" />
-<source-file src="src/ios/SDK/Growth/Publish/SHApp+Growth.m" />
--->
-<header-file src="src/ios/SDK/Location/Internal/SHLocationManager.h" />
-<source-file src="src/ios/SDK/Location/Internal/SHLocationManager.m" />
-<!--
-<header-file src="src/ios/SDK/Location/Private/SHBeaconBridge.h" />
-<source-file src="src/ios/SDK/Location/Private/SHBeaconBridge.m" />
-<header-file src="src/ios/SDK/Location/Private/SHBeaconStatus.h" />
-<source-file src="src/ios/SDK/Location/Private/SHBeaconStatus.m" />
-<header-file src="src/ios/SDK/Location/Private/SHGeofenceBridge.h" />
-<source-file src="src/ios/SDK/Location/Private/SHGeofenceBridge.m" />
-<header-file src="src/ios/SDK/Location/Private/SHGeofenceStatus.h" />
-<source-file src="src/ios/SDK/Location/Private/SHGeofenceStatus.m" />
-<header-file src="src/ios/SDK/Location/Private/SHLocationBridge.h" />
-<source-file src="src/ios/SDK/Location/Private/SHLocationBridge.m" />
--->
-<header-file src="src/ios/SDK/Location/Publish/SHApp+Location.h" />
-<source-file src="src/ios/SDK/Location/Publish/SHApp+Location.m" />
-<!--
-<header-file src="src/ios/SDK/Notification/Internal/SHAlertSettingsViewController.h" />
-<source-file src="src/ios/SDK/Notification/Internal/SHAlertSettingsViewController.m" />
-<header-file src="src/ios/SDK/Notification/Internal/SHNotificationHandler.h" />
-<source-file src="src/ios/SDK/Notification/Internal/SHNotificationHandler.m" />
-<header-file src="src/ios/SDK/Notification/Internal/SHSlideViewController.h" />
-<source-file src="src/ios/SDK/Notification/Internal/SHSlideViewController.m" />
-<header-file src="src/ios/SDK/Notification/Private/SHInteractiveButtons.h" />
-<source-file src="src/ios/SDK/Notification/Private/SHInteractiveButtons.m" />
-<header-file src="src/ios/SDK/Notification/Private/SHNotificationBridge.h" />
-<source-file src="src/ios/SDK/Notification/Private/SHNotificationBridge.m" />
-<header-file src="src/ios/SDK/Notification/Private/SHPushDataCallback.h" />
-<source-file src="src/ios/SDK/Notification/Private/SHPushDataCallback.m" />
-<header-file src="src/ios/SDK/Notification/Private/SHSlideWebViewController.h" />
-<source-file src="src/ios/SDK/Notification/Private/SHSlideWebViewController.m" />
-<header-file src="src/ios/SDK/Notification/Publish/ISHCustomiseHandler.h" />
-<header-file src="src/ios/SDK/Notification/Publish/ISHPhonegapObserver.h" />
-<header-file src="src/ios/SDK/Notification/Publish/InteractivePush.h" />
-<source-file src="src/ios/SDK/Notification/Publish/InteractivePush.m" />
-<header-file src="src/ios/SDK/Notification/Publish/SHApp+Notification.h" />
-<source-file src="src/ios/SDK/Notification/Publish/SHApp+Notification.m" />
--->
-<header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFHTTPSessionManager.h" />
-<source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFHTTPSessionManager.m" />
-<header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFNetworkReachabilityManager.h" />
-<source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFNetworkReachabilityManager.m" />
-<header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFNetworking.h" />
-<header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFSecurityPolicy.h" />
-<source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFSecurityPolicy.m" />
-<header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFURLRequestSerialization.h" />
-<source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFURLRequestSerialization.m" />
-<header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFURLResponseSerialization.h" />
-<source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFURLResponseSerialization.m" />
-<header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFURLSessionManager.h" />
-<source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFURLSessionManager.m" />
 
         
         <!-- Add frameworks -->
