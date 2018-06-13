@@ -14,6 +14,7 @@
 	<js-module name="Streethawk" src="www/Streethawk.js">
 		<clobbers target="cordova.plugins.Streethawk"/>
 	</js-module>
+    <dependency id="cordova-plugin-cocoapod-support"/>
 	<platform name="android">
 		
 		<config-file parent="/*" target="res/xml/config.xml">
@@ -72,6 +73,7 @@
 				<param name="ios-package" value="Streethawk"/>
 			</feature>
 		</config-file>
+        <pod name="MBProgressHUD" />
 		
 		<!-- Disable project assert -->
 		<hook type="after_plugin_install" src="src/ios/Script/disable_assert.js" />
