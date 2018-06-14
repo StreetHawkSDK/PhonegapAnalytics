@@ -74,6 +74,7 @@
 			</feature>
 		</config-file>
         <pod name="MBProgressHUD" />
+        <pod name="Reachability" />
 		
 		<!-- Disable project assert -->
 		<hook type="after_plugin_install" src="src/ios/Script/disable_assert.js" />
