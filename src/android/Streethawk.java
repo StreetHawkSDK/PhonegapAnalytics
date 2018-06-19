@@ -540,6 +540,11 @@ public class Streethawk extends CordovaPlugin implements ISHEventObserver{
 			}
 		}
     }
+	
+	@Override
+	public void onInstallRegisterError(String errorMsg) {
+		// TODO implement
+	}
    
 	/*PUSH API */	
 	private void addPushModule(){
