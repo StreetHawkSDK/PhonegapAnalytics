@@ -19,6 +19,7 @@
 //header from StreetHawk
 #import "SHApp.h" //for `StreetHawk.isDebugMode`
 #import "SHAppStatus.h" //for check streetHawkIsEnabled
+#import "SHViewController.h" //for SHBase(Table)ViewController
 
 void SHLog(NSString *format, ...)
 {
@@ -27,7 +28,7 @@ void SHLog(NSString *format, ...)
         va_list args;
         va_start(args, format);
         NSString * msg = [[NSString alloc] initWithFormat:format arguments:args];
-        NSLog(@"%@", msg);
+        NSLog(@"(StreetHawk Log): %@", msg);
         va_end(args);
     }
 }
@@ -87,8 +88,12 @@ NSDateFormatter *shGetDateFormatter(NSString *dateFormat, NSTimeZone *timeZone, 
 
 NSString *shFormatStreetHawkDate(NSDate *date)
 {
-    NSDateFormatter *date_formatter = shGetDateFormatter(nil, nil, nil);
-    return [date_formatter stringFromDate:date];
+    return [shGetDateFormatter(nil, nil, nil) stringFromDate:date];
+}
+
+NSString *shFormatISODate(NSDate *date)
+{
+    return [shGetDateFormatter(@"yyyy-MM-dd'T'HH:mm:ssZ", nil, nil) stringFromDate:date];
 }
 
 NSDate *shParseDate(NSString *input, int offsetSeconds)
@@ -104,30 +109,26 @@ NSDate *shParseDate(NSString *input, int offsetSeconds)
         dispatch_semaphore_wait(formatter_semaphore, DISPATCH_TIME_FOREVER);
         NSDateFormatter *dateFormatter = shGetDateFormatter(nil, nil, nil);
         out = [dateFormatter dateFromString:input];
+        NSArray *arrayTimeformat = @[@"yyyy-MM-dd'T'HH:mm:ss.SSS",
+                                     @"yyyy-MM-dd'T'HH:mm:ssZ",
+                                     @"yyyy-MM-dd'T'HH:mm:ss.SSSZ",
+                                     @"yyyy-MM-dd'T'HH:mm:ss",
+                                     @"yyyy-MM-dd",
+                                     @"dd/MM/yyyy HH:mm:ss",
+                                     @"dd/MM/yyyy",
+                                     @"MM/dd/yyyy HH:mm:ss",
+                                     @"MM/dd/yyyy"];
         if (out == nil)
         {
-            [dateFormatter setDateFormat:@"yyyy-MM-dd"];
-            out = [dateFormatter dateFromString:input];
-        }
-        if (out == nil)
-        {
-            [dateFormatter setDateFormat:@"dd/MM/yyyy HH:mm:ss"];
-            out = [dateFormatter dateFromString:input];
-        }
-        if (out == nil)
-        {
-            [dateFormatter setDateFormat:@"dd/MM/yyyy"];
-            out = [dateFormatter dateFromString:input];
-        }
-        if (out == nil)
-        {
-            [dateFormatter setDateFormat:@"MM/dd/yyyy HH:mm:ss"];
-            out = [dateFormatter dateFromString:input];
-        }
-        if (out == nil)
-        {
-            [dateFormatter setDateFormat:@"MM/dd/yyyy"];
-            out = [dateFormatter dateFromString:input];
+            for (NSString *strTimeFormat in arrayTimeformat)
+            {
+                [dateFormatter setDateFormat:strTimeFormat];
+                out = [dateFormatter dateFromString:input];
+                if (out != nil)
+                {
+                    break;
+                }
+            }
         }
         dispatch_semaphore_signal(formatter_semaphore);
         if (offsetSeconds != 0)
@@ -212,7 +213,7 @@ NSString *shAppendString(NSString *str1, NSString *str2)
 //If need to set a string as paramter to URL, it needs to check some spefical characters (such as !*'();:@&=+$,/?%#[]) and convert them to URL encoding, for example "#" is encoded as "%23".
 NSString *shUrlEncodeFull(NSString *input)
 {
-    NSString *encoded = (__bridge_transfer/*ARC: create CF and memory managed by NS*/ NSString *)CFURLCreateStringByAddingPercentEscapes(NULL, (__bridge CFStringRef)input, NULL, (CFStringRef)@"!*'();:@&=+$,/?%#[]", kCFStringEncodingUTF8);
+    NSString *encoded = (__bridge_transfer/*ARC: create CF and memory managed by NS*/ NSString *)CFURLCreateStringByAddingPercentEscapes(NULL, (__bridge CFStringRef)input, NULL, (CFStringRef)@"!*'();:@&=+$,/?%#[]_", kCFStringEncodingUTF8);
     return encoded;
 }
 
@@ -267,24 +268,75 @@ void shPresentErrorAlertOrLog(NSError *error)
 //Go traverse to UIView's responder till get a UIViewController.
 id shTraverseResponderChainForUIViewController(UIView *view)
 {
-    id nextResponder = [view nextResponder];
-    if ([nextResponder isKindOfClass:[UIViewController class]])
+    if ([view respondsToSelector:@selector(nextResponder)])
     {
-        return nextResponder;
+        id nextResponder = [view nextResponder];
+        if ([nextResponder isKindOfClass:[UIViewController class]])
+        {
+            return nextResponder;
+        }
+        else if ([nextResponder isKindOfClass:[UIView class]])
+        {
+            return shTraverseResponderChainForUIViewController((UIView *)nextResponder);
+        }
     }
-    else if ([nextResponder isKindOfClass:[UIView class]])
-    {
-        return shTraverseResponderChainForUIViewController((UIView *)nextResponder);
-    }
-    else
-    {
-        return nil;
-    }
+    
+    return nil;
 }
 
 UIViewController *shGetViewController(UIView *view)
 {
     return (UIViewController *)shTraverseResponderChainForUIViewController(view);
+}
+
+CGSize shrinkControlSize(UIView *control)
+{
+    //for tip display at correct position, some control needs to get real size.
+    if ([control isKindOfClass:[UILabel class]])
+    {
+        //a label can be large, but the real display size is small.
+        UILabel *label = (UILabel *)control;
+        if (shStrIsEmpty(label.text))
+        {
+            return CGSizeMake(1.0, 1.0);
+        }
+        BOOL isOneLine = NO;
+        CGSize maximumLabelSize = CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX);
+        if (label.lineBreakMode == NSLineBreakByClipping
+            || label.lineBreakMode == NSLineBreakByTruncatingHead
+            || label.lineBreakMode == NSLineBreakByTruncatingTail
+            || label.lineBreakMode == NSLineBreakByTruncatingMiddle)
+        {
+            //one line mode
+            maximumLabelSize = CGSizeMake(CGFLOAT_MAX, label.bounds.size.height);
+            isOneLine = YES;
+        }
+        else if (label.lineBreakMode == NSLineBreakByCharWrapping
+                 || label.lineBreakMode == NSLineBreakByWordWrapping)
+        {
+            //multiple line mode
+            maximumLabelSize = CGSizeMake(label.bounds.size.width, CGFLOAT_MAX);
+        }
+        else
+        {
+            assert(NO && "Meet unexpected line break mode.");
+        }
+        NSMutableParagraphStyle *textParagraphStyle = [[NSMutableParagraphStyle alloc] init];
+        textParagraphStyle.alignment = label.textAlignment;
+        textParagraphStyle.lineBreakMode = label.lineBreakMode;
+        CGRect rect = [label.text boundingRectWithSize:maximumLabelSize options:NSStringDrawingUsesLineFragmentOrigin| NSStringDrawingUsesFontLeading attributes:@{NSFontAttributeName:label.font, NSParagraphStyleAttributeName:textParagraphStyle} context:nil];
+        CGFloat width = rect.size.width <= label.bounds.size.width ? rect.size.width : label.bounds.size.width;
+        CGFloat height = rect.size.height <= label.bounds.size.height ? rect.size.height : label.bounds.size.height;
+        if (isOneLine)
+        {
+            return CGSizeMake(width, label.bounds.size.height); //still keep label's height, otherwise pointer move a little bit upper.
+        }
+        else
+        {
+            return CGSizeMake(label.bounds.size.width, height);
+        }
+    }
+    return control.bounds.size;
 }
 
 //Recrusively close views.
@@ -339,6 +391,7 @@ UIWindow *shGetPresentWindow()
 #pragma mark - Resources and Bundles Utility
 
 #define StreetHawk_BUNDLE ([[NSBundle mainBundle] URLForResource:@"streethawk" withExtension:@"bundle"] != nil ? [NSBundle bundleWithURL:[[NSBundle mainBundle] URLForResource:@"streethawk" withExtension:@"bundle"]] : nil)
+#define Pointzi_BUNDLE ([[NSBundle mainBundle] URLForResource:@"Pointzi" withExtension:@"bundle"] != nil ? [NSBundle bundleWithURL:[[NSBundle mainBundle] URLForResource:@"Pointzi" withExtension:@"bundle"]] : nil)
 #define StreetHawkCoreRES_BUNDLE ([[NSBundle mainBundle] URLForResource:@"StreetHawkCoreRes" withExtension:@"bundle"] != nil ? [NSBundle bundleWithURL:[[NSBundle mainBundle] URLForResource:@"StreetHawkCoreRes" withExtension:@"bundle"]] : nil)
 #define StreetHawkCoreRES_Titanium_BUNDLE ([[NSBundle mainBundle] URLForResource:@"StreetHawkCoreRes" withExtension:@"bundle" subdirectory:@"modules/com.streethawk.shanalytics"] != nil ? [NSBundle bundleWithURL:[[NSBundle mainBundle] URLForResource:@"StreetHawkCoreRes" withExtension:@"bundle" subdirectory:@"modules/com.streethawk.shanalytics"]] : nil)
 #define StreetHawkCoreRES_EmbeddedFull_BUNDLE ([[NSBundle mainBundle] URLForResource:@"StreetHawkCoreRes" withExtension:@"bundle" subdirectory:@"Frameworks/StreetHawkCore.framework"] != nil ? [NSBundle bundleWithURL:[[NSBundle mainBundle] URLForResource:@"StreetHawkCoreRes" withExtension:@"bundle" subdirectory:@"Frameworks/StreetHawkCore.framework"]] : nil)
@@ -354,6 +407,10 @@ NSBundle *shFindBundleForResource(NSString *resourceName, NSString *type, BOOL m
     {
         bundle = StreetHawk_BUNDLE;
     }
+    else if (Pointzi_BUNDLE != nil && [[NSFileManager defaultManager] fileExistsAtPath:[Pointzi_BUNDLE pathForResource:resourceName ofType:type]]) //check Pointzi.bundle
+    {
+        bundle = Pointzi_BUNDLE;
+    }
     else if (StreetHawkCoreRES_BUNDLE != nil && [[NSFileManager defaultManager] fileExistsAtPath:[StreetHawkCoreRES_BUNDLE pathForResource:resourceName ofType:type]])  //check StreetHawkCoreRes.bundle
     {
         bundle = StreetHawkCoreRES_BUNDLE;
@@ -365,7 +422,19 @@ NSBundle *shFindBundleForResource(NSString *resourceName, NSString *type, BOOL m
     else if (StreetHawkCoreRES_EmbeddedFull_BUNDLE != nil && [[NSFileManager defaultManager] fileExistsAtPath:[StreetHawkCoreRES_EmbeddedFull_BUNDLE pathForResource:resourceName ofType:type]])  //check Embedded binary framework
     {
         bundle = StreetHawkCoreRES_EmbeddedFull_BUNDLE;
-    }    
+    }
+    //For png image, it might append @3x or @2x in file name. Try in case not find suitable.
+    if (bundle == nil && [type compare:@"png" options:NSCaseInsensitiveSearch] == NSOrderedSame && ![resourceName containsString:@"@"])
+    {
+        if (![resourceName hasSuffix:@"@3x"])
+        {
+            bundle  = shFindBundleForResource([resourceName stringByAppendingString:@"@3x"], type, mandatory);
+        }
+        if (bundle == nil && ![resourceName hasSuffix:@"@2x"])
+        {
+            bundle  = shFindBundleForResource([resourceName stringByAppendingString:@"@2x"], type, mandatory);
+        }
+    }
     if (mandatory)
     {
         assert(bundle != nil && "Cannot find suitable bundle");
@@ -381,6 +450,10 @@ NSString *shLocalizedString(NSString *key, NSString *defaultStr)
         if (StreetHawk_BUNDLE != nil)
         {
             retStr = NSLocalizedStringWithDefaultValue(key, nil, StreetHawk_BUNDLE, defaultStr, nil);
+        }
+        if (Pointzi_BUNDLE != nil)
+        {
+            retStr = NSLocalizedStringWithDefaultValue(key, nil, Pointzi_BUNDLE, defaultStr, nil);
         }
         if (StreetHawkCoreRES_BUNDLE != nil && (shStrIsEmpty(retStr) || [retStr isEqualToString:key]))
         {
@@ -641,6 +714,9 @@ NSString *shDevelopmentPlatformString()
         case SHDevelopmentPlatform_Unity:
             platformStr = @"unity";
             break;
+        case SHDevelopmentPlatform_ReactNative:
+            platformStr = @"reactnative";
+            break;
         default:
             assert(NO && "Meet unknown development platform.");
             platformStr = @"unknown";
@@ -658,13 +734,55 @@ BOOL streetHawkIsEnabled()
     }
     else if (shStrIsEmpty([[SHAppStatus sharedInstance] aliveHostForVersion:SHHostVersion_Unknown]))
     {
-        NSLog(@"No host server, please contact Administrator to enable it.");
+        NSLog(@"Route to host server.");
         return NO;
     }
     else
     {
         return YES;
     }
+}
+
+BOOL shIsSDKViewController(UIViewController * vc)
+{
+    return ([vc isKindOfClass:[SHBaseViewController class]]
+            || [vc isKindOfClass:[SHBaseTableViewController class]]
+            || [vc isKindOfClass:[SHBaseCollectionViewController class]]);
+}
+
+NSString* findNativeID(UIView *view)
+{
+    __block NSString *nativeid = nil;
+    [view.subviews enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(__kindof UIView * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        id nid = [obj valueForKey:@"nativeID"];
+        if (nid && [nid isKindOfClass:NSString.class]) {
+            nativeid = (NSString*)nid;
+        }
+        if (nativeid.length <= 0) {
+            nativeid = findNativeID(obj);
+        }
+        if (nativeid.length > 0) {
+            *stop = YES;
+        }
+    }];
+    return nativeid;
+}
+
+NSString *shAppendUniqueSuffix(UIViewController *vc)
+{
+    NSString *ret = [vc.class description];
+    //check react-native
+    if ([vc.view isKindOfClass:NSClassFromString(@"RCTRootView")]) {
+        id cview = [vc.view valueForKey:@"contentView"];
+        if (cview) {
+            UIView *view = (UIView*)cview;
+            NSString *nativeid = findNativeID(view);
+            if (nativeid.length > 0) {
+                ret = nativeid;
+            }
+        }
+    }
+    return ret;
 }
 
 BOOL shStrIsEmpty(NSString *str)
@@ -777,6 +895,265 @@ NSString *shCaptureAdvertisingIdentifier()
     //model list: http://theiphonewiki.com/wiki/Models.
     //It's up to server to show read friendly name.
     return [self getSysInfoByName:"hw.machine"];
+}
+
+@end
+
+@implementation UIColor (SHExt)
+
++ (BOOL)isRGB:(NSArray *)arrayComponents
+{
+    return arrayComponents.count >= RGB_COLOUR_CODE_LEN;
+}
+
++ (BOOL)isRGBA:(NSArray *)arrayComponents
+{
+    return arrayComponents.count == ARGB_COLOUR_CODE_LEN;
+}
+
++ (UIColor *)colorFromHexString:(NSString *)hexString
+{
+    if (![hexString hasPrefix:@"#"])
+    {
+        return nil;
+    }
+    CGFloat red = -1;
+    CGFloat green = -1;
+    CGFloat blue = -1;
+    CGFloat alpha = -1;
+    if (hexString.length == RGB_COLOUR_CODE_LEN + 1)
+    {
+        NSString *red = [hexString substringWithRange:NSMakeRange(1, 1)];
+        NSString *green = [hexString substringWithRange:NSMakeRange(2, 1)];
+        NSString *blue = [hexString substringWithRange:NSMakeRange(3, 1)];
+        hexString = [NSString stringWithFormat:@"#%@%@%@%@%@%@", red, red, green, green, blue, blue];
+    }
+    NSScanner *scanner = [NSScanner scannerWithString:hexString];
+    [scanner setScanLocation:1]; // bypass '#' character
+    unsigned rgbValue = 0;
+    [scanner scanHexInt:&rgbValue];
+    red = ((rgbValue & 0xFF0000) >> 16)/255.0;
+    green = ((rgbValue & 0xFF00) >> 8)/255.0;
+    blue = (rgbValue & 0xFF)/255.0;
+    if (hexString.length == RRGGBB_COLOUR_CODE_LEN + 1)
+    {
+        alpha = 1.0;
+    }
+    else
+    {
+        alpha = ((rgbValue & 0xFF000000) >> 24)/255.0;
+    }
+    if (red >= 0 && red <= 1
+        && green >= 0 && green <= 1
+        && blue >= 0 && blue <= 1
+        && alpha >= 0 && alpha <= 1)
+    {
+        return [UIColor colorWithRed:red green:green blue:blue alpha:alpha];
+    }
+    else
+    {
+        return nil;
+    }
+}
+
++ (UIColor *)colorFromRGBString:(NSString *)rgbString
+{
+    CGFloat red = -1;
+    CGFloat green = -1;
+    CGFloat blue = -1;
+    CGFloat alpha = -1;
+    if ([rgbString.lowercaseString hasPrefix:@"rgb("]
+        && [rgbString.lowercaseString hasSuffix:@")"])
+    {
+        rgbString = [rgbString.lowercaseString stringByReplacingOccurrencesOfString:@"rgb(" withString:@""];
+        rgbString = [rgbString stringByReplacingOccurrencesOfString:@")" withString:@""];
+        NSArray *arrayComponents = [rgbString componentsSeparatedByString:@","];
+        NSCharacterSet *whiteChar = [NSCharacterSet whitespaceCharacterSet];
+        if ([self isRGB:arrayComponents])
+        {
+            red = [[arrayComponents[0] stringByTrimmingCharactersInSet:whiteChar] floatValue]/255.0;
+            green = [[arrayComponents[1] stringByTrimmingCharactersInSet:whiteChar] floatValue]/255.0;
+            blue = [[arrayComponents[2] stringByTrimmingCharactersInSet:whiteChar] floatValue]/255.0;
+        }
+        if ([self isRGBA:arrayComponents])
+        {
+            alpha = [[arrayComponents[3] stringByTrimmingCharactersInSet:whiteChar] floatValue];
+            if (alpha > 1)
+            {
+                alpha = alpha/255.0;
+            }
+        }
+        else
+        {
+            alpha = 1.0;
+        }
+    }
+    if (red >= 0 && red <= 1
+        && green >= 0 && green <= 1
+        && blue >= 0 && blue <= 1
+        && alpha >= 0 && alpha <= 1)
+    {
+        return [UIColor colorWithRed:red green:green blue:blue alpha:alpha];
+    }
+    else
+    {
+        return nil;
+    }
+}
+
++ (UIColor *)colorFromString:(NSString *)str
+{
+    if (![str isKindOfClass:[NSString class]])
+    {
+        return nil;
+    }
+    if (str.length == RGB_COLOUR_CODE_LEN + 1 //#RGB
+        || str.length == RRGGBB_COLOUR_CODE_LEN + 1 //#RRGGBB
+        || str.length == AARRGGBB_COLOUR_CODE_LEN + 1) //#AARRGGBB
+    {
+        return [self colorFromHexString:str];
+    }
+    else //rgb(255,255,255,1)
+    {
+        return [self colorFromRGBString:str];
+    }
+    return nil;
+}
+
++ (NSString *)hexStringFromColor:(UIColor *)color
+{
+    if (color == nil)
+    {
+        return nil;
+    }
+    CGFloat red, green, blue, alpha;
+    if ([color getRed:&red green:&green blue:&blue alpha:&alpha])
+    {
+        return [NSString stringWithFormat:@"#%02X%02X%02X%02X",
+                (int)([self validateColorRange:alpha] * 255),
+                (int)([self validateColorRange:red] * 255),
+                (int)([self validateColorRange:green] * 255),
+                (int)([self validateColorRange:blue] * 255)];
+    }
+    else
+    {
+        return nil;
+    }
+}
+
++ (CGFloat)validateColorRange:(CGFloat)colorComponent
+{
+    //getRed..green..blue..alpha function may return -0.001, maybe due
+    //to float accuracy. Check the validate range is 0~1.
+    if (colorComponent < 0)
+    {
+        return 0;
+    }
+    if (colorComponent > 1)
+    {
+        return 1;
+    }
+    return colorComponent;
+}
+
+@end
+
+@implementation NSLayoutConstraint (SHExt)
+
+-(NSString *)description
+{
+    return [NSString stringWithFormat:@"id: %@, constant: %f", self.identifier, self.constant];
+}
+
+@end
+
+#import "objc/runtime.h"
+
+@implementation NSObject (SHExt)
+
+static NSString *getPropertyType(objc_property_t property)
+{
+    const char *attributes = property_getAttributes(property);
+    char buffer[1 + strlen(attributes)];
+    strcpy(buffer, attributes);
+    char *state = buffer, *attribute;
+    while ((attribute = strsep(&state, ",")) != NULL)
+    {
+        if (attribute[0] == 'T')
+        {
+            NSString *attributeStr = [NSString stringWithUTF8String:attribute];
+            if ([attributeStr containsString:@"FourSide"]) //get "T{FourSide=dddd}"
+            {
+                return @"FourSide";
+            }
+            else if ([attributeStr isEqualToString:@"Ti"])
+            {
+                return @"int"; //not exactly the property definition. enum, NSInteger etc all end this.
+            }
+            else if ([attributeStr isEqualToString:@"Td"] ||
+                     [attributeStr isEqualToString:@"Tf"])
+            {
+                return @"double"; //double, float, CGFloat etc.
+            }
+            if ([attributeStr isEqualToString:@"Tq"])
+            {
+                return @"NSTextAlignment";
+            }
+            if ([attributeStr isEqualToString:@"TB"] ||
+                [attributeStr isEqualToString:@"Tc"])
+            {
+                return @"bool";
+            }
+            if ([attributeStr isEqualToString:@"T@"])
+            {
+                return @"id";
+            }
+            if (attributeStr.length > 4)
+            {
+                return [attributeStr substringWithRange:NSMakeRange(3, attributeStr.length - 4)];
+            }
+        }
+    }
+    return @"";
+}
+
+- (NSDictionary<NSString *, NSString *> *)getPropertyNameTypes
+{
+    unsigned int outCount, i;
+    objc_property_t *properties = class_copyPropertyList([self class], &outCount);
+    NSMutableDictionary<NSString *, NSString *> *dictProperties = [NSMutableDictionary dictionaryWithCapacity:outCount];
+    for(i = 0; i < outCount; i++)
+    {
+        objc_property_t property = properties[i];
+        const char *propName = property_getName(property);
+        if(propName)
+        {
+            NSString *propertyName = [NSString stringWithUTF8String:propName];
+            NSString *propertyType = getPropertyType(property);
+            dictProperties[propertyName] = NONULL(propertyType);
+        }
+    }
+    free(properties);
+    return dictProperties;
+}
+
+@end
+
+#import <CommonCrypto/CommonDigest.h>
+
+@implementation NSString (SHExt)
+
+- (NSString *)md5
+{
+    const char *cStr = [self cStringUsingEncoding:NSUTF8StringEncoding];
+    unsigned char result[CC_MD5_DIGEST_LENGTH];
+    NSInteger length = strlen(cStr);
+    CC_MD5(cStr, (int)length, result);
+    return [NSString stringWithFormat:
+            @"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+            result[0], result[1], result[2], result[3], result[4], result[5],
+            result[6], result[7], result[8], result[9], result[10], result[11],
+            result[12], result[13], result[14], result[15]];
 }
 
 @end

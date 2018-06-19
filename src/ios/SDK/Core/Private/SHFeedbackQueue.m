@@ -20,14 +20,13 @@
 #import "SHHTTPSessionManager.h" //for sending request
 #import "PushDataForApplication.h" //for use pushData
 #import "SHUtils.h" //for format date utility
-#import "SHPresentDialog.h" //for present modal dialog
 #import "SHInstall.h" //for `StreetHawk.currentInstall.suid`
 #import "SHLogger.h" //for send logline
 #import "SHFeedbackViewController.h" //for input feedback comment
 #import "SHChoiceViewController.h" //for choose feedback options
 #import "SHAlertView.h" //for confirm dialog
 //header from Third-party
-#import "SHMBProgressHUD.h" //for feedback result
+#import "MBProgressHUD.h" //for feedback result
 
 @interface SHFeedbackQueue ()
 
@@ -113,8 +112,8 @@
         dispatch_async(dispatch_get_main_queue(), ^
            {
                UIWindow *presentWindow = shGetPresentWindow();
-               SHMBProgressHUD *resultView = [SHMBProgressHUD showHUDAddedTo:presentWindow animated:YES];
-               resultView.mode = SHMBProgressHUDModeText; //only show result text, not show progress bar.
+               MBProgressHUD *resultView = [MBProgressHUD showHUDAddedTo:presentWindow animated:YES];
+               resultView.mode = MBProgressHUDModeText; //only show result text, not show progress bar.
                resultView.label.text = shLocalizedString(@"STREETHAWK_WINDOW_FEEDBACK_THANKS", @"Thanks for your feedback!");
                [resultView hideAnimated:YES afterDelay:1.5];
            });
@@ -186,7 +185,10 @@
             SHFeedbackViewController *feedbackVC = [[SHFeedbackViewController alloc] initWithNibName:nil bundle:nil];
             feedbackVC.inputHandler = inputHandler;
             feedbackVC.feedbackTitle = feedbackChoice;
-            [self presentModalDialogViewController:feedbackVC];
+            [feedbackVC presentOnTopWithCover:YES withCoverColor:nil withCoverAlpha:0 withDelay:YES withCoverTouchHandler:nil withAnimationHandler:nil withOrientationChangedHandler:^(CGRect fullScreenRect)
+             {
+                 feedbackVC.view.frame = CGRectMake((fullScreenRect.size.width - feedbackVC.view.frame.size.width) / 2, (fullScreenRect.size.height - feedbackVC.view.frame.size.height) / 2, feedbackVC.view.frame.size.width, feedbackVC.view.frame.size.height);
+             }];
         };
         //arrayChoice may contain none string, or empty string, need to filter out otherwise cause crash.
         NSMutableArray *arrayChoiceRefine = [NSMutableArray array];
@@ -300,7 +302,13 @@
             choiceVC.arrayChoices = arrayChoiceRefine;
             choiceVC.displayTitle = alertTitle;
             choiceVC.displayMessage = infoMessage;
-            [choiceVC showChoiceList];
+            [choiceVC presentOnTopWithCover:YES withCoverColor:nil withCoverAlpha:0 withDelay:YES withCoverTouchHandler:nil withAnimationHandler:^(CGRect fullScreenRect)
+             {
+                 [choiceVC arrangeControls:fullScreenRect];
+             } withOrientationChangedHandler:^(CGRect fullScreenRect)
+            {
+                [choiceVC arrangeControls:fullScreenRect];
+            }];
         }
     }
 }

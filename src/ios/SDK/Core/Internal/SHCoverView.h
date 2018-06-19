@@ -17,9 +17,36 @@
 
 #import <UIKit/UIKit.h>
 
+typedef void (^SHCoverViewOrientationChanged) (void);
+typedef void (^SHCoverViewTouched) (CGPoint touchPoint);
+
 /**
- Transparent light gray cover window. This is the UIWindow covers full screen to present modal dialog or slider.
+ Transparent light color cover view.
  */
-@interface SHCoverWindow : UIWindow
+@interface SHCoverView : UIView
+
+@property (nonatomic, strong) UIViewController *contentVC;
+
+/**
+ The color of the overlay.
+ */
+@property (nonatomic, strong) UIColor *overlayColor;
+
+/**
+ The alpha of the overlay.
+ */
+@property (nonatomic) CGFloat overlayAlpha;
+
+/**
+ Callback when orientation changes.
+ */
+@property (nonatomic, copy) SHCoverViewOrientationChanged orientationChangedHandler;
+
+/**
+ Callback when full screen cover view is touched.
+ */
+@property (nonatomic, copy) SHCoverViewTouched touchedHandler;
+
+- (void)orientationChanged:(NSNotification *)notification;
 
 @end

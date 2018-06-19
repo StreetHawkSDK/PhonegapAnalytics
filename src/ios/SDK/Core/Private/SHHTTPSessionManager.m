@@ -41,55 +41,129 @@
     static SHHTTPSessionManager *sharedHTTPSessionManager = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^
-      {
-          sharedHTTPSessionManager = [[SHHTTPSessionManager alloc] initWithSessionConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
-          sharedHTTPSessionManager.completionQueue = dispatch_queue_create("com.streethawk.StreetHawk.network", NULL/*NULL attribute same as DISPATCH_QUEUE_SERIAL, means this queue is FIFO.*/); //set completionQueue otherwise completion callback runs in main thread.
-      });
+    {
+        sharedHTTPSessionManager = [[SHHTTPSessionManager alloc]
+                                    initWithSessionConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
+        sharedHTTPSessionManager.completionQueue = dispatch_queue_create("com.streethawk.StreetHawk.network", NULL/*NULL attribute same as DISPATCH_QUEUE_SERIAL, means this queue is FIFO.*/); //set completionQueue otherwise completion callback runs in main thread.
+        //add header
+        [sharedHTTPSessionManager.requestSerializer setValue:[NSString stringWithFormat:@"%@(%@)", StreetHawk.appKey, StreetHawk.version]
+                                          forHTTPHeaderField:@"User-Agent"]; //e.g: "SHSample(1.5.3)"
+        [sharedHTTPSessionManager.requestSerializer setValue:NONULL(StreetHawk.appKey)
+                                          forHTTPHeaderField:@"X-App-Key"];
+        [sharedHTTPSessionManager.requestSerializer setValue:StreetHawk.version
+                                          forHTTPHeaderField:@"X-Version"];
+        [sharedHTTPSessionManager.requestSerializer setValue:!shStrIsEmpty(StreetHawk.currentInstall.suid) ? StreetHawk.currentInstall.suid : @"null"
+                                          forHTTPHeaderField:@"X-Installid"];
+        //Add install token for /v3 request. Cannot check host version here, add to all requests.
+        NSString *installToken = [[NSUserDefaults standardUserDefaults] objectForKey:SH_INSTALL_TOKEN];
+        if (!shStrIsEmpty(installToken))
+        {
+            [sharedHTTPSessionManager.requestSerializer setValue:installToken forHTTPHeaderField:@"X-Install-Token"];
+        }
+    });
     //By default it uses HTTP request and JSON response serializer.
     return sharedHTTPSessionManager;
 }
 
 #pragma mark - override functions
 
-- (nullable NSURLSessionDataTask *)GET:(nonnull NSString *)URLString hostVersion:(SHHostVersion)hostVersion parameters:(nullable NSDictionary *)parameters success:(nullable void (^)(NSURLSessionDataTask * _Nullable task, id _Nullable responseObject))success failure:(nullable void (^)(NSURLSessionDataTask * _Nullable task, NSError * _Nullable error))failure
+- (nullable NSURLSessionDataTask *)GET:(nonnull NSString *)URLString
+                           hostVersion:(SHHostVersion)hostVersion
+                            parameters:(nullable NSDictionary *)parameters
+                               success:(nullable void (^)(NSURLSessionDataTask * _Nullable task, id _Nullable responseObject))success
+                               failure:(nullable void (^)(NSURLSessionDataTask * _Nullable task, NSError * _Nullable error))failure
 {
     URLString = [self completeStreetHawkSpecialUrl:URLString withHostVersion:hostVersion];
-    NSURLSessionDataTask *task = [super GET:URLString parameters:parameters/*append as query string*/ progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) 
-    {
-        [self processSuccessCallback:task withData:responseObject success:success failure:failure];
-    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error)
-    {
-        [self processFailureCallback:task withError:error failure:failure];
-    }];
-    SHLog(@"GET - %@", URLString);
+    NSURLSessionDataTask *task = [super GET:URLString
+                                 parameters:parameters /*append as query string*/
+                                   progress:nil
+                                    success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+                                        [self processSuccessCallback:task
+                                                            withData:responseObject
+                                                             success:success
+                                                             failure:failure];
+                                    }
+                                    failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+                                        [self processFailureCallback:task
+                                                           withError:error
+                                                             failure:failure];
+                                    }];
+    SHLog(@"GET - %@", task.currentRequest.URL.absoluteString);
     return task;
 }
 
-- (nullable NSURLSessionDataTask *)POST:(nonnull NSString *)URLString hostVersion:(SHHostVersion)hostVersion body:(nullable NSDictionary *)body success:(nullable void (^)(NSURLSessionDataTask * _Nullable task, id _Nullable responseObject))success failure:(nullable void (^)(NSURLSessionDataTask * _Nullable task, NSError * _Nullable error))failure
+- (nullable NSURLSessionDataTask *)POST:(nonnull NSString *)URLString
+                            hostVersion:(SHHostVersion)hostVersion
+                                   body:(nullable NSDictionary *)body
+                                success:(nullable void (^)(NSURLSessionDataTask * _Nullable task, id _Nullable responseObject))success
+                                failure:(nullable void (^)(NSURLSessionDataTask * _Nullable task, NSError * _Nullable error))failure
 {
     URLString = [self completeStreetHawkSpecialUrl:URLString withHostVersion:hostVersion];
-    NSURLSessionDataTask *task = [super POST:URLString parameters:body/*will go to body*/ progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject)
-    {
-        [self processSuccessCallback:task withData:responseObject success:success failure:failure];
-    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error)
-    {
-        [self processFailureCallback:task withError:error failure:failure];
-    }];
+    NSURLSessionDataTask *task = [super POST:URLString
+                                  parameters:body /*will go to body*/
+                                    progress:nil
+                                     success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+                                         [self processSuccessCallback:task
+                                                             withData:responseObject
+                                                              success:success
+                                                              failure:failure];
+                                     }
+                                     failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+                                         [self processFailureCallback:task
+                                                            withError:error
+                                                              failure:failure];
+                                     }];
+    SHLog(@"POST - %@", task.currentRequest.URL.absoluteString);
+    return task;
+}
+
+- (nullable NSURLSessionDataTask *)POST:(nonnull NSString *)URLString
+                            hostVersion:(SHHostVersion)hostVersion
+              constructingBodyWithBlock:(nullable void (^)(id <SHAFMultipartFormData> _Nullable formData))block
+                                success:(nullable void (^)(NSURLSessionDataTask * _Nullable task, id _Nullable responseObject))success
+                                failure:(nullable void (^)(NSURLSessionDataTask * _Nullable task, NSError * _Nullable error))failure
+{
+    URLString = [self completeStreetHawkSpecialUrl:URLString withHostVersion:hostVersion];
+    NSURLSessionDataTask *task = [super POST:URLString
+                                  parameters:nil
+                   constructingBodyWithBlock:block
+                                    progress:nil
+                                     success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+                                         [self processSuccessCallback:task
+                                                             withData:responseObject
+                                                              success:success
+                                                              failure:failure];
+                                     }
+                                     failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+                                         [self processFailureCallback:task
+                                                            withError:error
+                                                              failure:failure];
+                                     }];
     SHLog(@"POST - %@", URLString);
     return task;
 }
 
-- (nullable NSURLSessionDataTask *)POST:(nonnull NSString *)URLString hostVersion:(SHHostVersion)hostVersion constructingBodyWithBlock:(nullable void (^)(id <SHAFMultipartFormData> _Nullable formData))block success:(nullable void (^)(NSURLSessionDataTask * _Nullable task, id _Nullable responseObject))success failure:(nullable void (^)(NSURLSessionDataTask * _Nullable task, NSError * _Nullable error))failure
+- (nullable NSURLSessionDataTask *)DELETE:(nonnull NSString *)URLString
+                              hostVersion:(SHHostVersion)hostVersion
+                               parameters:(nullable NSDictionary *)parameters
+                                  success:(nullable void (^)(NSURLSessionDataTask * _Nullable task, id _Nullable responseObject))success
+                                  failure:(nullable void (^)(NSURLSessionDataTask * _Nullable task, NSError * _Nullable error))failure
 {
     URLString = [self completeStreetHawkSpecialUrl:URLString withHostVersion:hostVersion];
-    NSURLSessionDataTask *task = [super POST:URLString parameters:nil constructingBodyWithBlock:block progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject)
-    {
-        [self processSuccessCallback:task withData:responseObject success:success failure:failure];
-    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error)
-    {
-        [self processFailureCallback:task withError:error failure:failure];
-    }];
-    SHLog(@"POST - %@", URLString);
+    NSURLSessionDataTask *task = [super DELETE:URLString
+                                    parameters:parameters
+                                       success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+                                           [self processSuccessCallback:task
+                                                               withData:responseObject
+                                                                success:success
+                                                                failure:failure];
+                                       }
+                                       failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+                                           [self processFailureCallback:task
+                                                              withError:error
+                                                                failure:failure];
+                                       }];
+    SHLog(@"DELETE - %@", URLString);
     return task;
 }
 
@@ -125,11 +199,6 @@
             }
             [completeUrl appendFormat:@"/%@", urlString];
         }
-        //add header
-        [self.requestSerializer setValue:[NSString stringWithFormat:@"%@(%@)", StreetHawk.appKey, StreetHawk.version] forHTTPHeaderField:@"User-Agent"]; //e.g: "SHSample(1.5.3)"
-        [self.requestSerializer setValue:NONULL(StreetHawk.appKey) forHTTPHeaderField:@"X-App-Key"];
-        [self.requestSerializer setValue:StreetHawk.version forHTTPHeaderField:@"X-Version"];
-        [self.requestSerializer setValue:!shStrIsEmpty(StreetHawk.currentInstall.suid) ? StreetHawk.currentInstall.suid : @"null" forHTTPHeaderField:@"X-Installid"];
         //add "installid"
         NSAssert([completeUrl rangeOfString:@"?"].location == NSNotFound, @"Query should not contained.");
         if (!shStrIsEmpty(StreetHawk.currentInstall.suid))
@@ -147,7 +216,8 @@
 {
     NSAssert(![NSThread isMainThread], @"Successfual callback wait in main thread for request %@.", task.currentRequest);
     if ([task.response.URL.absoluteString.lowercaseString containsString:@".streethawk.com"] //since route host server is flexible to change
-        && ![task.response.URL.absoluteString.lowercaseString hasPrefix:NONULL([SHAppStatus sharedInstance].growthHost)]) //growth is an exception
+        && ![task.response.URL.absoluteString.lowercaseString hasPrefix:NONULL([SHAppStatus sharedInstance].growthHost)] //growth is an exception
+        && ![task.response.URL.absoluteString.lowercaseString containsString:@"/v3"]) //v3 endpoint doesn't have code-value format
     {
         //whenever success process a request, do parser as it affects AppStatus.
         int resultCode = CODE_OK;
@@ -190,61 +260,72 @@
                     //check "streethawk" to enable/disable library function
                     if ([dictStatus.allKeys containsObject:@"streethawk"] && [dictStatus[@"streethawk"] respondsToSelector:@selector(boolValue)])
                     {
-                        [SHAppStatus sharedInstance].streethawkEnabled = [dictStatus[@"streethawk"] boolValue];
+                        [SHAppStatus sharedInstance].streethawkEnabled = [NONULL(dictStatus[@"streethawk"]) boolValue];
                     }
                     //check "host"
                     if ([dictStatus.allKeys containsObject:@"host"] && [dictStatus[@"host"] isKindOfClass:[NSString class]])
                     {
-                        [SHAppStatus sharedInstance].aliveHost = dictStatus[@"host"];
+                        [SHAppStatus sharedInstance].aliveHost = NONULL(dictStatus[@"host"]);
                     }
                     //check "growth_host"
                     if ([dictStatus.allKeys containsObject:@"growth_host"] && [dictStatus[@"growth_host"] isKindOfClass:[NSString class]])
                     {
-                        [SHAppStatus sharedInstance].growthHost = dictStatus[@"growth_host"];
+                        [SHAppStatus sharedInstance].growthHost = NONULL(dictStatus[@"growth_host"]);
                     }
                     //check "location_updates"
                     if ([dictStatus.allKeys containsObject:@"location_updates"] && [dictStatus[@"location_updates"] respondsToSelector:@selector(boolValue)])
                     {
-                        [SHAppStatus sharedInstance].uploadLocationChange = [dictStatus[@"location_updates"] boolValue];
+                        [SHAppStatus sharedInstance].uploadLocationChange = [NONULL(dictStatus[@"location_updates"]) boolValue];
                     }
                     //check "submit_views"
                     if ([dictStatus.allKeys containsObject:@"submit_views"] && [dictStatus[@"submit_views"] respondsToSelector:@selector(boolValue)])
                     {
-                        [SHAppStatus sharedInstance].allowSubmitFriendlyNames = [dictStatus[@"submit_views"] boolValue];
+                        [SHAppStatus sharedInstance].allowSubmitFriendlyNames = [NONULL(dictStatus[@"submit_views"]) boolValue];
                     }
                     if ([dictStatus.allKeys containsObject:@"submit_interactive_button"] && [dictStatus[@"submit_interactive_button"] respondsToSelector:@selector(boolValue)])
                     {
-                        [SHAppStatus sharedInstance].allowSubmitInteractiveButton = [dictStatus[@"submit_interactive_button"] boolValue];
+                        [SHAppStatus sharedInstance].allowSubmitInteractiveButton = [NONULL(dictStatus[@"submit_interactive_button"]) boolValue];
                     }
                     //check "ibeacon"
                     if ([dictStatus.allKeys containsObject:@"ibeacon"])
                     {
-                        [SHAppStatus sharedInstance].iBeaconTimestamp = dictStatus[@"ibeacon"]; //it may be nil
+                        [SHAppStatus sharedInstance].iBeaconTimestamp = NONULL(dictStatus[@"ibeacon"]); //it may be nil
                     }
                     //check "geofences"
                     if ([dictStatus.allKeys containsObject:@"geofences"])
                     {
-                        [SHAppStatus sharedInstance].geofenceTimestamp = dictStatus[@"geofences"];
+                        [SHAppStatus sharedInstance].geofenceTimestamp = NONULL(dictStatus[@"geofences"]);
                     }
-                    //check "feed"
-                    if ([dictStatus.allKeys containsObject:@"feed"])
+                    //check "feed_updated"
+                    if ([dictStatus.allKeys containsObject:@"feed_updated"])
                     {
-                        [SHAppStatus sharedInstance].feedTimestamp = dictStatus[@"feed"];
+                        SHLog(@"feed timestamp in app_status: %@", dictStatus[@"feed_updated"]);
+                        [SHAppStatus sharedInstance].feedTimestamp = NONULL(dictStatus[@"feed_updated"]);
                     }
                     //check "reregister"
                     if ([dictStatus.allKeys containsObject:@"reregister"])
                     {
-                        [SHAppStatus sharedInstance].reregister = [dictStatus[@"reregister"] boolValue];
+                        [SHAppStatus sharedInstance].reregister = [NONULL(dictStatus[@"reregister"]) boolValue];
                     }
                     //check "app_store_id"
                     if ([dictStatus.allKeys containsObject:@"app_store_id"])
                     {
-                        [SHAppStatus sharedInstance].appstoreId = dictStatus[@"app_store_id"];
+                        [SHAppStatus sharedInstance].appstoreId = NONULL(dictStatus[@"app_store_id"]);
                     }
                     //check "disable_logs"
-                    [SHAppStatus sharedInstance].logDisableCodes = dictStatus[@"disable_logs"]; //directly pass nil
+                    if ([dictStatus.allKeys containsObject:@"disable_logs"])
+                    {
+                        [SHAppStatus sharedInstance].logDisableCodes = NONULL(dictStatus[@"disable_logs"]); //directly pass nil
+                    }
                     //check "priority"
-                    [SHAppStatus sharedInstance].logPriorityCodes = dictStatus[@"priority"];
+                    if ([dictStatus.allKeys containsObject:@"priority"])
+                    {
+                        [SHAppStatus sharedInstance].logPriorityCodes = NONULL(dictStatus[@"priority"]);
+                    }
+                    [[NSNotificationCenter defaultCenter]
+                     postNotificationName:@"SH_PointziBridge_AppStatus_Notification"
+                     object:nil
+                     userInfo:@{@"appstatus": dictStatus}];
                     //refresh app_status check time
                     [[SHAppStatus sharedInstance] recordCheckTime];
                 }
@@ -283,7 +364,7 @@
             }
         }
     }
-    else //not StreetHawk case, directly give to handler
+    else //directly give to handler
     {
         if (success)
         {
@@ -295,9 +376,22 @@
 - (void)processFailureCallback:(NSURLSessionDataTask * _Nonnull)task withError:(NSError * _Nullable)error failure:(nullable void (^)(NSURLSessionDataTask * _Nullable task, NSError * _Nullable error))failure
 {
     NSAssert(![NSThread isMainThread], @"Failure callback wait in main thread for request %@.", task.currentRequest);
+    NSString *detailError = nil; //if the detail error is inside error data, use it instead
+    if (error.userInfo[@"com.alamofire.serialization.response.error.data"] != nil)
+    {
+        NSData *errorData = error.userInfo[@"com.alamofire.serialization.response.error.data"];
+        detailError = [[NSString alloc] initWithData:errorData encoding:NSUTF8StringEncoding];
+    }
     if (failure)
     {
-        failure(task, error);
+        if (shStrIsEmpty(detailError))
+        {
+            failure(task, error);
+        }
+        else
+        {
+            failure(task, [NSError errorWithDomain:SHErrorDomain code:0 userInfo:@{NSLocalizedDescriptionKey: detailError}]);
+        }
     }
     //Show error on console when debug
     if (StreetHawk.isDebugMode && shAppMode() != SHAppMode_AppStore && shAppMode() != SHAppMode_Enterprise)
@@ -319,10 +413,9 @@
             NSString *postStr = [[[NSString alloc] initWithData:task.currentRequest.HTTPBody encoding:NSUTF8StringEncoding] stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
             comment = [comment stringByAppendingFormat:@"\nPost body: %@.", postStr];
         }
-        if (error.userInfo[@"com.alamofire.serialization.response.error.data"] != nil)
+        if (!shStrIsEmpty(detailError))
         {
-            NSData *errorData = error.userInfo[@"com.alamofire.serialization.response.error.data"];
-            comment = [comment stringByAppendingFormat:@"\nError data: %@", [[NSString alloc] initWithData:errorData encoding:NSUTF8StringEncoding]];
+            comment = [comment stringByAppendingFormat:@"\nError data: %@", detailError];
         }
         SHLog(@"Add breakpoint here to know error request happen for %@.", comment);
     }

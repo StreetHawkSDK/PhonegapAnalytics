@@ -93,6 +93,7 @@ NSString * const SHInstallNotification_kError = @"Error";
     NSMutableDictionary *dictParams = [NSMutableDictionary dictionary];
     UIDevice *device = [UIDevice currentDevice];
     dictParams[@"app_key"] = NONULL(StreetHawk.appKey);
+    dictParams[@"segmentio_anonymous_id"] = StreetHawk.segmentId;
     dictParams[@"client_version"] = StreetHawk.clientVersion;
     dictParams[@"sh_version"] = StreetHawk.version;
     dictParams[@"model"] = NONULL(device.platformString); //rename class not use UIDevice extension, to avoid link to wrong obj
@@ -149,7 +150,8 @@ NSString * const SHInstallNotification_kError = @"Error";
     NSNumber *disablePushTimeVal = [[NSUserDefaults standardUserDefaults] objectForKey:APNS_DISABLE_TIMESTAMP];
     [[NSUserDefaults standardUserDefaults] setObject:disablePushTimeVal != nil ? disablePushTimeVal : @0.0 forKey:APNS_SENT_DISABLE_TIMESTAMP];
     [[NSUserDefaults standardUserDefaults] synchronize];
-    NSString *revokeDate = (disablePushTimeVal == nil || [disablePushTimeVal doubleValue] == 0) ? @"" : shFormatStreetHawkDate([NSDate dateWithTimeIntervalSince1970:disablePushTimeVal.doubleValue]);
+    NSString *revokeDate = (disablePushTimeVal == nil || [disablePushTimeVal doubleValue] == 0) ?
+    @"" : shFormatISODate([NSDate dateWithTimeIntervalSince1970:disablePushTimeVal.doubleValue]);
     dictParams[@"revoked"] = revokeDate;
     NSString *macAddress = shGetMacAddress();  //mac address cannot be got since iOS 7.0, always return "02:00:00:00:00:00".
     if (macAddress != nil && [macAddress compare:@"02:00:00:00:00:00"] != NSOrderedSame)
@@ -216,6 +218,12 @@ NSString * const SHInstallNotification_kError = @"Error";
         }
             break;
     }
+    Class notificationBridge = NSClassFromString(@"SHNotificationBridge");
+    dictParams[@"feature_push"] = (notificationBridge == nil) ? @"false" : @"true";
+    Class locationBridge = NSClassFromString(@"SHLocationBridge");
+    dictParams[@"feature_locations"] = (locationBridge == nil) ? @"false" : @"true";
+    Class beaconBridge = NSClassFromString(@"SHBeaconBridge");
+    dictParams[@"feature_ibeacons"] = (beaconBridge == nil) ? @"false" : @"true";
     return dictParams;
 }
 

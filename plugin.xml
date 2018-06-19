@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<plugin id="com.streethawk.core" version="1.8.7" xmlns="http://apache.org/cordova/ns/plugins/1.0"
+<plugin id="com.streethawk.core" version="1.9.14" xmlns="http://apache.org/cordova/ns/plugins/1.0"
 	xmlns:android="http://schemas.android.com/apk/res/android">
 	<name>StreetHawkCore</name>
 	<description>StreetHawk SDK plugin for analytics</description>
@@ -14,6 +14,7 @@
 	<js-module name="Streethawk" src="www/Streethawk.js">
 		<clobbers target="cordova.plugins.Streethawk"/>
 	</js-module>
+    <dependency id="cordova-plugin-cocoapod-support"/>
 	<platform name="android">
 		
 		<config-file parent="/*" target="res/xml/config.xml">
@@ -72,6 +73,8 @@
 				<param name="ios-package" value="Streethawk"/>
 			</feature>
 		</config-file>
+        <pod name="MBProgressHUD" />
+        <pod name="Reachability" />
 		
 		<!-- Disable project assert -->
 		<hook type="after_plugin_install" src="src/ios/Script/disable_assert.js" />
@@ -112,12 +115,12 @@
         <!-- Plugin native SDK -->
         <header-file src="src/ios/SDK/Core/Internal/SHAlertView.h" />
         <source-file src="src/ios/SDK/Core/Internal/SHAlertView.m" />
+        <header-file src="src/ios/SDK/Core/Internal/SHCoverView.h" />
+        <source-file src="src/ios/SDK/Core/Internal/SHCoverView.m" />
         <header-file src="src/ios/SDK/Core/Internal/SHInstallHandler.h" />
         <source-file src="src/ios/SDK/Core/Internal/SHInstallHandler.m" />
         <header-file src="src/ios/SDK/Core/Internal/SHLogger.h" />
-        <source-file src="src/ios/SDK/Core/Internal/SHLogger.m" />        
-        <header-file src="src/ios/SDK/Core/Internal/SHUtils.h" />
-        <source-file src="src/ios/SDK/Core/Internal/SHUtils.m" />
+        <source-file src="src/ios/SDK/Core/Internal/SHLogger.m" />
         <header-file src="src/ios/SDK/Core/Internal/SHViewController.h" />
         <source-file src="src/ios/SDK/Core/Internal/SHViewController.m" />
         <header-file src="src/ios/SDK/Core/Private/SHActionSheet.h" />
@@ -126,8 +129,6 @@
         <source-file src="src/ios/SDK/Core/Private/SHAppStatus.m" />
         <header-file src="src/ios/SDK/Core/Private/SHChoiceViewController.h" />
         <source-file src="src/ios/SDK/Core/Private/SHChoiceViewController.m" />
-        <header-file src="src/ios/SDK/Core/Private/SHCoverWindow.h" />
-        <source-file src="src/ios/SDK/Core/Private/SHCoverWindow.m" compiler-flags="-fno-objc-arc" />
         <header-file src="src/ios/SDK/Core/Private/SHDeepLinking.h" />
         <source-file src="src/ios/SDK/Core/Private/SHDeepLinking.m" />
         <header-file src="src/ios/SDK/Core/Private/SHFeedbackQueue.h" />
@@ -138,8 +139,6 @@
         <source-file src="src/ios/SDK/Core/Private/SHHTTPSessionManager.m" />
         <header-file src="src/ios/SDK/Core/Private/SHInterceptor.h" />
         <source-file src="src/ios/SDK/Core/Private/SHInterceptor.m" />
-        <header-file src="src/ios/SDK/Core/Private/SHPresentDialog.h" />
-        <source-file src="src/ios/SDK/Core/Private/SHPresentDialog.m" compiler-flags="-fno-objc-arc" />
         <header-file src="src/ios/SDK/Core/Publish/PushDataForApplication.h" />
         <source-file src="src/ios/SDK/Core/Publish/PushDataForApplication.m" />
         <header-file src="src/ios/SDK/Core/Publish/SHApp.h" />
@@ -153,12 +152,18 @@
         <header-file src="src/ios/SDK/Core/Publish/SHObject.h" />
         <source-file src="src/ios/SDK/Core/Publish/SHObject.m" />
         <header-file src="src/ios/SDK/Core/Publish/SHTypes.h" />
+        <header-file src="src/ios/SDK/Core/Publish/SHUtils.h" />
+        <source-file src="src/ios/SDK/Core/Publish/SHUtils.m" />
         <header-file src="src/ios/SDK/Core/Publish/StreetHawkCore.h" />
+        <header-file src="src/ios/SDK/Location/Internal/SHLocationManager.h" />
+        <source-file src="src/ios/SDK/Location/Internal/SHLocationManager.m" />
+        <header-file src="src/ios/SDK/Location/Publish/SHApp+Location.h" />
+        <source-file src="src/ios/SDK/Location/Publish/SHApp+Location.m" />
         <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFHTTPSessionManager.h" />
         <source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFHTTPSessionManager.m" />
-        <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFNetworking.h" />
         <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFNetworkReachabilityManager.h" />
         <source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFNetworkReachabilityManager.m" />
+        <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFNetworking.h" />
         <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFSecurityPolicy.h" />
         <source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFSecurityPolicy.m" />
         <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFURLRequestSerialization.h" />
@@ -167,16 +172,7 @@
         <source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFURLResponseSerialization.m" />
         <header-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFURLSessionManager.h" />
         <source-file src="src/ios/SDK/ThirdParty/AFNetworking/SHAFURLSessionManager.m" />
-        <header-file src="src/ios/SDK/ThirdParty/MBProgressHUD/SHMBProgressHUD.h" />
-        <source-file src="src/ios/SDK/ThirdParty/MBProgressHUD/SHMBProgressHUD.m" />
-        
-        <!-- Location source code used in three plugins, add in core to avoid duplication. -->
-        <header-file src="src/ios/SDK/Location/Internal/SHLocationManager.h" />
-        <source-file src="src/ios/SDK/Location/Internal/SHLocationManager.m" />
-        <header-file src="src/ios/SDK/Location/Publish/SHApp+Location.h" />
-        <source-file src="src/ios/SDK/Location/Publish/SHApp+Location.m" />
-        <header-file src="src/ios/SDK/ThirdParty/Reachability/SHReachability.h" />
-        <source-file src="src/ios/SDK/ThirdParty/Reachability/SHReachability.m" />
+
         
         <!-- Add frameworks -->
         <framework src="libsqlite3.dylib" />

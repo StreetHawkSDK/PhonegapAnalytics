@@ -11,7 +11,7 @@ $ cd <APPLICATION_DIRECTORY>
 $ cordova plugin add streethawkanalytics  --variable APP_KEY=<YOUR_APPLICATIONS_APP_KEY> --variable URL_SCHEME=<URL_SCHEME_OF_APP>
 ```
 ## Documentation
-Click [here](https://streethawk.freshdesk.com/solution/articles/5000680125) for detailed documentation of StreetHawk's Analytics plugin.
+Click [here](https://dashboard.streethawk.com/docs/sdks/phonegap/analytics/) for detailed documentation of StreetHawk's Analytics plugin.
 
 ## Other StreetHawk Phonegap plugins
 

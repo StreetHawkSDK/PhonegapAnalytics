@@ -24,7 +24,7 @@
 //header from System
 #import <UIKit/UIKit.h> //for `[UIApplication sharedApplication]`
 //header from Third-party
-#import "SHReachability.h"
+#import "Reachability.h"
 
 #define LOCATION_DENIED_SENT        @"LOCATION_DENIED_SENT" //a flag indicates this App has sent location denied log to avoid send one more time.
 #define NETWORK_RECOVER_TIME        @"NETWORK_RECOVER_TIME" //Record time when network from not-connected to connected(either cellura or Wifi). If it's 0 means current network not connected; if it's number means last time from non-connected to connected.
@@ -48,8 +48,8 @@
 - (NSString *)formatBeaconRegion:(CLBeaconRegion *)region;  //format beacon region to a string in format UUID-major-minor-identifier.
 - (BOOL)isRegionSame:(CLRegion *)r1 with:(CLRegion *)r2;  //compare two iBeacon region is same.
 
-@property (nonatomic, strong) SHReachability *reachability;
-- (void)createNetworkMonitor; //create SHReachability to monitor network status change.
+@property (nonatomic, strong) Reachability *reachability;
+- (void)createNetworkMonitor; //create Reachability to monitor network status change.
 - (void)networkStatusChanged:(NSNotification *)notification; //handle for notification for network status change.
 - (BOOL)updateRecoverTime; //update NETWORK_RECOVER_TIME value. Return YES if connect and non-connect change.
 
@@ -121,8 +121,8 @@
 
 - (void)createNetworkMonitor
 {
-    self.reachability = [SHReachability reachabilityForInternetConnection]; //not use `reachabilityForHostname` as use "https://api.streethawk.com" always return no connection.
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(networkStatusChanged:) name:kSHReachabilityChangedNotification object:nil];
+    self.reachability = [Reachability reachabilityForInternetConnection]; //not use `reachabilityForHostname` as use "https://api.streethawk.com" always return no connection.
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(networkStatusChanged:) name:kReachabilityChangedNotification object:nil];
     [self.reachability startNotifier];
     [self updateRecoverTime]; //notifier not trigger when start, update to correct value in initalize.
 }
@@ -604,7 +604,7 @@
     {
         return; //if current location is not detected, not send log 20.
     }
-    if (self.reachability.currentSHReachabilityStatus != ReachableViaWiFi && self.reachability.currentSHReachabilityStatus != ReachableViaWWAN)
+    if (self.reachability.currentReachabilityStatus != ReachableViaWiFi && self.reachability.currentReachabilityStatus != ReachableViaWWAN)
     {
         return; //only do location 20 when network available
     }
@@ -694,7 +694,7 @@
     {
         recoverTime = [(NSNumber *)recoverTimeValue doubleValue];
     }
-    if (self.reachability.currentSHReachabilityStatus == NotReachable)
+    if (self.reachability.currentReachabilityStatus == NotReachable)
     {
         if (recoverTime != 0)
         {
@@ -818,7 +818,11 @@
     //If iBeacon inside region, previous launch is inside region, this time will not trigger delegate until cross border. To not igore this time, forcibily to trigger status delegate.
     if ([self.locationManager respondsToSelector:@selector(requestStateForRegion:)])
     {
-        [self.locationManager requestStateForRegion:region];
+        double delayInSeconds = 1; //If request state immediately, it might return error 5 or unknown status. Solution is delay.
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delayInSeconds * NSEC_PER_SEC)), dispatch_get_main_queue(), ^(void)
+        {
+            [self.locationManager requestStateForRegion:region];
+        });
     }
 }
 
@@ -932,6 +936,12 @@
         default:
             break;
     }
+    
+    // set sh_location_denied when location authorization status changed, sh_location_denied will be true/false value. true: if status is 'always' or 'when in use'; false: if status is not 'always' and not 'when in use'
+    NSString *isSHLocationDenied = (status == kCLAuthorizationStatusAuthorizedAlways || status == kCLAuthorizationStatusAuthorizedWhenInUse)?@"false":@"true";
+    [StreetHawk tagString:isSHLocationDenied forKey:@"sh_location_denied"];
+    SHLog(@"set sh_location_denied as %@ due to Authorisation status changed", isSHLocationDenied);
+    
     SHLog(@"LocationManager Delegate: Authorisation status changed: %@.", authStatus);
     NSDictionary *userInfo = @{SHLMNotification_kAuthStatus: [NSNumber numberWithInt:status]};
     NSNotification *notification = [NSNotification notificationWithName:SHLMChangeAuthorizationStatusNotification object:self userInfo:userInfo];

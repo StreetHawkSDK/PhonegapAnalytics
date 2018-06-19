@@ -65,9 +65,18 @@ extern NSDateFormatter *shGetDateFormatter(NSString *dateFormat, NSTimeZone *tim
 extern NSString *shFormatStreetHawkDate(NSDate *date);
 
 /**
+ Formats a date into a string in ISO format.
+ Format is yyyy-MM-dd'T'HH:mm:ssZ in UTC timezone, for example 2017-03-03T05:27:59+0000.
+ @param date The date value to be formatted.
+ @return The return string.
+ */
+extern NSString *shFormatISODate(NSDate *date);
+
+/**
  Parses date string into NSDate format. It tries to support as much format as possible. Refer to `input` parameters for the supported date time format.
  @param input Date time string. It supports this kinds of strings:
  
+ * yyyy-MM-dd'T'HH:mm:ssZ, for example 2017-03-03T05:27:59+0000
  * yyyy-MM-dd HH:mm:ss, for example 2012-12-20 18:20:50
  * yyyy-MM-dd, for example 2012-12-20
  * dd/MM/yyyy HH:mm:ss, for example 20/12/2012 18:20:50
@@ -96,6 +105,14 @@ extern NSString *shSerializeObjToJson(NSObject *obj);
 /** @name URL Process Utility */
 
 /**
+ /If need to set a string as paramter to URL, it needs to check some spefical characters 
+ (such as !*'();:@&=+$,/?%#[]) and convert them to URL encoding, for example "#" is encoded as "%23".
+ @param input The input raw string, such as "#".
+ @return The url encoded string, such as "%23".
+ */
+extern NSString *shUrlEncodeFull(NSString *input);
+
+/**
  Parse get request string's parameter string to NSDictionary. For example, param1=value1&param2=value2&param3=value3 is parsed to {param1:value1, param2:value2, param3=value3}.
  @param str Parameter string of a get request, formatted as: param1=value1&param2=value2&param3=value3...
  @return Dictionary parsed from the parameter string.
@@ -121,14 +138,19 @@ extern void shPresentErrorAlertOrLog(NSError *error);
 extern UIViewController *shGetViewController(UIView *view);
 
 /**
+ Get real display name for some controls such as UILabel.
+ */
+extern CGSize shrinkControlSize(UIView *control);
+
+/**
  Dismiss all message views, including UIAlertView, UIActionSheet, UIModalView.
  */
-extern void shDismissAllMessageView();
+extern void shDismissAllMessageView(void);
 
 /**
  Get a suitable window to present other views, such as `MBProgressHUD`, `UIActionSheet` etc. It's not hidden, and not confirm dialog window.
  */
-extern UIWindow *shGetPresentWindow();
+extern UIWindow *shGetPresentWindow(void);
 
 /** @name Resources and Bundles Utility */
 
@@ -160,12 +182,12 @@ extern BOOL shCallPhoneNumber(NSString *phone);
 /**
  Get mac address of current device, the output is for example: 00:23:32:CB:AB:80. However since iOS 7 this function cannot work on device anymore, always return fake address.
  */
-extern NSString *shGetMacAddress();
+extern NSString *shGetMacAddress(void);
 
 /**
  Get carrier's name from current device, for example "AT&T", "China Mobile" etc. If current device does not connect to carrier, for example iPad Wifi, return "Other".
  */
-extern NSString *shGetCarrierName();
+extern NSString *shGetCarrierName(void);
 
 /**
  Enum for this App's mode.
@@ -202,7 +224,7 @@ typedef enum SHAppMode SHAppMode;
 /**
  Return the mode of current App.
  */
-extern SHAppMode shAppMode();
+extern SHAppMode shAppMode(void);
 
 /**
  Return the string to describe current mode. 
@@ -212,12 +234,23 @@ extern NSString *shAppModeString(SHAppMode mode);
 /**
  Return string describing which development platform current App is.
  */
-extern NSString *shDevelopmentPlatformString();
+extern NSString *shDevelopmentPlatformString(void);
 
 /**
  Return app/status result of streethawk function should be enabled. 
  */
-extern BOOL streetHawkIsEnabled();
+extern BOOL streetHawkIsEnabled(void);
+
+/**
+ Check whether it's SDK's view controller.
+ */
+extern BOOL shIsSDKViewController(UIViewController * vc);
+
+/**
+ Some view such as react-native use RCTView for all views, so that only vc cannot work, it needs an
+ additional id. This function appends additional id.
+ */
+extern NSString *shAppendUniqueSuffix(UIViewController *vc);
 
 /**
  Utility function to check string is nil or empty.
@@ -244,7 +277,7 @@ extern BOOL shIsUniversalLinking(NSString *url);
 /**
  Automatically capture advertising identifier if customer's App add AdSupport.framework. If not return nil.
  */
-extern NSString *shCaptureAdvertisingIdentifier();
+extern NSString *shCaptureAdvertisingIdentifier(void);
 
 /**
  Extension to system UIDevice class.
@@ -256,6 +289,59 @@ extern NSString *shCaptureAdvertisingIdentifier();
  @return Raw model string.
  */
 - (NSString *)platformString;
+
+@end
+
+/**
+ Extension to system UIColor class.
+ */
+@interface UIColor (SHExt)
+
+#define RGB_COLOUR_CODE_LEN         3
+#define ARGB_COLOUR_CODE_LEN        4
+#define RRGGBB_COLOUR_CODE_LEN      6
+#define AARRGGBB_COLOUR_CODE_LEN    8
+
+/**
+ Support two types:
+ 1. Convert hex string formatted as #RGB or #RRGGBB or #AARRGGBB to UIColor.
+    It must prefix "#" and only contains (A), R, G, B. If not in this format, return nil.
+ 2. Convert RGB string formatted as rgb(255,255,255,1).
+ */
++ (UIColor *)colorFromString:(NSString *)str;
+
+/**
+ Convert color to hex string formatted as #AARRGGBB. If color is nil return nil.
+ */
++ (NSString *)hexStringFromColor:(UIColor *)color;
+
+@end
+
+/**
+ Extension for prints auto-layout constraint description.
+ */
+@interface NSLayoutConstraint (SHExt)
+
+@end
+
+/**
+ Extension for NSObject.
+ */
+@interface NSObject (SHExt)
+
+/**
+ Get direct properties inside this class definition. Not include super class's properties.
+ */
+- (NSDictionary<NSString *, NSString *> *)getPropertyNameTypes;
+
+@end
+
+@interface NSString (SHExt)
+
+/**
+ Get md5 of a string.
+ */
+- (NSString *)md5;
 
 @end
 

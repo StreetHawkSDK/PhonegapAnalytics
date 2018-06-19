@@ -51,6 +51,10 @@ enum SHDevelopmentPlatform
      Unity Apps.
      */
     SHDevelopmentPlatform_Unity,
+    /**
+     React-native Apps.
+     */
+    SHDevelopmentPlatform_ReactNative,
 };
 typedef enum SHDevelopmentPlatform SHDevelopmentPlatform;
 
@@ -76,5 +80,7 @@ typedef enum SHDevelopmentPlatform SHDevelopmentPlatform;
 #define SH_BEACON_iBEACON       @"SH_BEACON_iBEACON"
 //For get location permission status, before use it must have notification "SH_LMBridge_UpdateLocationPermissionStatus" to update the value.
 #define SH_LOCATION_STATUS      @"SH_LOCATION_STATUS"
+//For get/set App install token
+#define SH_INSTALL_TOKEN        @"SH_INSTALL_TOKEN"
 
 #endif

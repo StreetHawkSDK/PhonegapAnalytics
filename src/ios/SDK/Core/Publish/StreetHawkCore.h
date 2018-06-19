@@ -26,6 +26,7 @@
 #import "SHInstall.h"
 #import "SHObject.h"
 #import "SHTypes.h"
+#import "SHUtils.h"
 
 //Crash
 #ifdef SH_FEATURE_CRASH
@@ -54,6 +55,12 @@
 #import "ISHCustomiseHandler.h"
 #import "ISHPhonegapObserver.h"
 #import "SHApp+Notification.h"
+#endif
+
+//Pointzi
+#ifdef SH_FEATURE_POINTZI
+#import "SHPointziApi.h"
+#import "SHTip.h"
 #endif
 
 #endif //SH__STREETHAWK__H

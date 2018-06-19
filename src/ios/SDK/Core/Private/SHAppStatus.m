@@ -20,6 +20,7 @@
 #import "SHUtils.h" //for SHLog
 #import "SHApp.h" //for `StreetHawk.currentInstall`
 #import "SHLogger.h" //for sending logline
+#import "SHDeepLinking.h" //for handle pointzi deeplinking
 
 #define APPSTATUS_STREETHAWKENABLED         @"APPSTATUS_STREETHAWKENABLED" //whether enable library functions
 #define APPSTATUS_ALIVE_HOST                @"APPSTATUS_ALIVE_HOST" //currently used alive host url
@@ -148,6 +149,8 @@ NSString * const SHAppStatusChangeNotification = @"SHAppStatusChangeNotification
             return [NSString stringWithFormat:@"%@/%@", self.aliveHostInner, @"v1"];
         case SHHostVersion_V2:
             return [NSString stringWithFormat:@"%@/%@", self.aliveHostInner, @"v2"];
+        case SHHostVersion_V3:
+            return [NSString stringWithFormat:@"%@/%@", self.aliveHostInner, @"v3"];
         case SHHostVersion_Unknown:
             return self.aliveHostInner; //some just for test
             break;
@@ -311,7 +314,7 @@ NSString * const SHAppStatusChangeNotification = @"SHAppStatusChangeNotification
 
 - (void)setFeedTimestamp:(NSString *)feedTimestamp
 {
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"SH_LMBridge_SetFeedTimestamp" object:nil userInfo:@{@"timestamp": NONULL(feedTimestamp)}];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"SH_FeedBridge_SetFeedTimestamp" object:nil userInfo:@{@"timestamp": NONULL(feedTimestamp)}];
 }
 
 - (BOOL)reregister
